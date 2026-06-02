@@ -1,7 +1,7 @@
 [project]
 name = "ptal-analyse"
 version = "0.1.0"
-description = "Add your description here"
+description = "Tool for EDYTEM-PTAL, Extracte data from G2K report"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
