@@ -1,0 +1,28 @@
+@startuml
+!theme plain
+
+left to right direction
+
+actor "Data Scientist" as DS
+actor "R User" as RU
+usecase UC1 as "Upload Génie200\nReports"
+usecase UC2 as "Extract Data\nFields"
+usecase UC3 as "Validate &\nClean Data"
+usecase UC4 as "Generate\nDataFrame"
+usecase UC5 as "Export to R\nFormat"
+usecase UC6 as "View\nDiagrams"
+
+DS --> UC1
+UC1 --> UC2 : triggers
+UC2 --> UC3 : produces_raw_data
+UC3 --> UC4 : produces_validated_data
+UC4 --> UC5 : enables
+UC5 --> RU : consumes
+
+DS --> UC6
+RU --> UC6
+
+UC2 .> UC3 : includes
+UC4 .> UC6 : includes
+
+@enduml

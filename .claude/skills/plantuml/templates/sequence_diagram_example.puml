@@ -1,0 +1,40 @@
+@startuml
+participant "User" as user
+participant "RegexExtractor" as extractor
+participant "DataFrame" as df
+participant "DataValidator" as validator
+
+user -> extractor: extract(report_text)
+activate extractor
+
+extractor -> extractor: compile_pattern()
+extractor -> extractor: findall_matches()
+
+extractor --> user: raw_data[]
+deactivate extractor
+
+user -> df: DataFrame(raw_data)
+activate df
+
+df -> df: infer_types()
+df -> df: create_columns()
+
+df --> user: df_object
+deactivate df
+
+user -> validator: validate(df)
+activate validator
+
+validator -> validator: check_schema()
+validator -> validator: check_dtypes()
+validator -> validator: check_nulls()
+
+validator --> user: validation_report
+deactivate validator
+
+user -> df: to_csv('output.csv')
+activate df
+df --> user: ✓ file_saved
+deactivate df
+
+@enduml

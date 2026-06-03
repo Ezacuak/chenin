@@ -1,0 +1,58 @@
+@startuml
+!theme plain
+
+' Example: Data Mining Architecture
+
+package "extraction" {
+  class RegexExtractor {
+    - pattern: String
+    - flags: int
+    --
+    + extract(text): List[Match]
+    + compile(): Pattern
+  }
+}
+
+package "processing" {
+  class DataFrame {
+    - data: List[Row]
+    - columns: List[String]
+    --
+    + __init__(data)
+    + info(): void
+    + describe(): Statistics
+    + to_csv(path): void
+  }
+
+  class DataValidator {
+    - schema: Schema
+    --
+    + validate(df): bool
+    + checkTypes(df): bool
+  }
+}
+
+package "models" {
+  class Report {
+    - id: int
+    - title: String
+    - sections: List[Section]
+    --
+    + getId(): int
+    + getSections(): List[Section]
+  }
+
+  class Section {
+    - header: String
+    - content: String
+    --
+    + getHeader(): String
+  }
+}
+
+RegexExtractor --> Report : parses
+DataFrame <-- RegexExtractor : receives_data
+DataValidator --> DataFrame : validates
+Report *-- Section : contains
+
+@enduml
