@@ -9,7 +9,8 @@ class Report:
     def __init__(self, path: str, content: str):
         self.path = Path(path)
         self.content = content
-        self.sections = {}
+        self.sections_content = {}
+        self.sections_titles = []
         self._split_sections()
         self.s2_extractor = S2Extractor()
         self.s6_extractor = S6Extractor()
@@ -17,36 +18,45 @@ class Report:
     @classmethod
     def from_file(cls, path: str) -> "Report":
         with open(path, "r", encoding="utf-8") as f:
-            content = f.read()
+            content = f.read()      
         return cls(path, content)
 
     def _split_sections(self):
-        section_pattern = re.compile(
-            r"^\*+$\n^\*{5}(.*)\*{5}$\n^\*+$", re.MULTILINE
-        )
-        headers = section_pattern.findall(self.content)
-        matches = list(section_pattern.finditer(self.content))
+        section_header_pattern = re.compile(r"^\*+$\n^\*{5}(.*)\*{5}$\n^\*+$", re.MULTILINE)
+        
+        self.sections_headers = re.findall(section_header_pattern, self.content)
+        
+        for i, section in enumerate(self.sections_headers):
+            self.sections_titles.append(section.strip())
+            self.sections_content[section.strip()] = None
+        
+        matches = list(re.finditer(section_header_pattern, self.content))
 
         for i, match in enumerate(matches):
             title = match.group(1).strip()
             start = match.end()
             end = matches[i + 1].start() if i + 1 < len(matches) else len(self.content)
-            self.sections[title] = self.content[start:end].strip()
+            self.sections_content[title] = self.content[start:end].strip()
 
     def extract_s2(self) -> pd.DataFrame:
-        s2_title = self._find_section_title("RAPPORT ANALYSE DES PICS")
-        if not s2_title or s2_title not in self.sections:
-            return pd.DataFrame()
-        return self.s2_extractor.extract(self.sections[s2_title])
+        # s2_title = self._find_section_title("RAPPORT ANALYSE DES PICS")
+
+        # if not s2_title or s2_title not in self.sections_content:
+        #     return pd.DataFrame()
+
+        return self.s2_extractor.extract(self.sections_content[self.sections_titles[1]])
 
     def extract_s6(self) -> pd.DataFrame:
-        s6_title = self._find_section_title("ISO 11929")
-        if not s6_title or s6_title not in self.sections:
-            return pd.DataFrame()
-        return self.s6_extractor.extract(self.sections[s6_title])
+        # s6_title = self._find_section_title("ISO 11929")
+
+        # if not s6_title or s6_title not in self.sections_content:
+        #     return pd.DataFrame()
+
+        return self.s6_extractor.extract(self.sections_content[self.sections_titles[5]])
 
     def _find_section_title(self, search_term: str) -> str:
-        for title in self.sections.keys():
+        for title in self.sections_content.keys():
             if search_term in title:
                 return title
-        return None
+            
+        return ""
