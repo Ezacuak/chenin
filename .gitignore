@@ -12,4 +12,3 @@ wheels/
 .ruff_cache/
 
 out/
-note.txt
