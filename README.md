@@ -1,72 +1,64 @@
-# PTAL Analyse
+# ptal-analyse
 
-Outil pour la plateforme PTAL d'EDYTEM. Extrait et structure les données issues des rapports de spectrométrie gamma générés par **Génie 2000 (G2K)**.
+Parses **Génie 2000 (G2K)** gamma spectrometry reports into pandas DataFrames and CSV exports.
 
-Les rapports G2K sont des fichiers texte structurés en sections. Cet outil les parse par regex pour produire des données exploitables (CSV, DataFrames pandas).
+## Sections
 
-## Fonctionnement
+| ID | Content |
+|----|---------|
+| s1 | Report metadata (sample, dates, geometry) |
+| s2 | Peak analysis |
+| s3 | Nuclide identification |
+| s4_nucleides / s4_pics | Identification with interference correction |
+| s5 | Detection limits |
+| s6 | Detection limits (ISO 11929) |
 
-Le rapport G2K est découpé en sections délimitées par des bandeaux `*****` :
+## Setup
 
-| Section | Contenu |
-|---------|---------|
-| S1 | Métadonnées du rapport (échantillon, dates, géométrie) |
-| S2 | Analyse des pics |
-| S3 | Identification des nucléides |
-| S4 | Identification avec correction d'interférence |
-| S5 | Limites de détection |
-| S6 | Limites de détection ISO 11929 |
+### Intall python
 
-Le notebook [src/poc.ipynb](src/poc.ipynb) est le point d'entrée principal. Il illustre l'extraction section par section et exporte les résultats (ex. S6 → CSV).
+Useing `uv` for windows:
 
-## Installation
+```sh
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
-Ce projet utilise [uv](https://docs.astral.sh/uv/) pour la gestion de l'environnement.
+###
+Requires Python >= 3.14. With [uv](https://docs.astral.sh/uv/):
 
-### Prérequis
-
-- Python >= 3.14
-- `uv` installé ([guide Linux/macOS](https://docs.astral.sh/uv/getting-started/installation/) / [guide Windows](https://docs.astral.sh/uv/getting-started/installation/#windows))
-
-### Mise en place
-
-```bash
-# Cloner le dépôt
-git clone <url-du-repo>
-cd ptal-analyse
-
-# Créer l'environnement et installer les dépendances
+```sh
 uv sync
 ```
 
-### Lancer le notebook
+Or with pip:
 
-```bash
-# Avec Jupyter Lab
-uv run jupyter lab
-
-# Avec Jupyter Notebook classique
-uv run jupyter notebook
+```sh
+pip install pandas numpy
 ```
 
-Ouvrir ensuite [src/poc.ipynb](src/poc.ipynb).
+## Usage
 
-## Dépendances
+```sh
+# print all sections
+uv run src/poc.py report.txt
 
-| Paquet | Rôle |
-|--------|------|
-| `pandas` | Manipulation des données tabulaires |
-| `matplotlib` | Visualisation |
-| `ipykernel` | Exécution dans Jupyter |
+# export to CSV
+uv run src/poc.py report.txt -o data/output/
 
-## Structure du projet
+# display one section
+uv run src/poc.py report.txt -s s3
+```
+
+Available sections: `s1`, `s2`, `s3`, `s4_nucleides`, `s4_pics`, `s5`, `s6`.
+
+## Structure
 
 ```
 ptal-analyse/
-├── data/               # Rapports G2K (.txt) et sorties parsées (.csv)
+├── data/           G2K reports (.txt) and CSV outputs
 ├── src/
-│   ├── poc.ipynb       # Notebook de POC — extraction par section
-│   └── main.py         # Point d'entrée CLI (en développement)
+│   ├── poc.py      CLI — extracts all sections from a report
+│   └── poc.ipynb   Jupyter notebook for interactive exploration
 ├── pyproject.toml
-└── README.md
+└── uv.lock
 ```
