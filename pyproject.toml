@@ -16,3 +16,9 @@ dependencies = [
     "seaborn>=0.13.2",
     "streamlit>=1.58.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ipywidgets>=8.1.8",
+    "plotly>=6.8.0",
+]
