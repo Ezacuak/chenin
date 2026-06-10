@@ -13,13 +13,13 @@ Parses **Génie 2000 (G2K)** gamma spectrometry reports (plain `.txt`) into pand
 uv sync
 
 # Run the CLI (print all sections)
-uv run src/poc.py data/rapport-RGTh_3cm.txt
+uv run src/main.py data/test/rapport-RGTh_3cm.txt
 
 # Export all sections to CSV
-uv run src/poc.py data/rapport-RGTh_3cm.txt -o out/
+uv run src/main.py data/test/rapport-RGTh_3cm.txt -o out/
 
 # Display a single section
-uv run src/poc.py data/rapport-RGTh_3cm.txt -s s3
+uv run src/main.py data/test/rapport-RGTh_3cm.txt -s s3
 
 # Launch Jupyter for interactive exploration
 uv run jupyter lab
@@ -29,7 +29,7 @@ No test suite or linter is configured yet. `ruff` cache is present — run `uvx 
 
 ## Architecture
 
-All extraction logic lives in [src/poc.py](src/poc.py). There is no package structure; the single file is both the library and the CLI entry point.
+All extraction logic lives in [src/main.py](src/main.py). There is no package structure; the single file is both the library and the CLI entry point.
 
 **Data flow**: raw `.txt` report → `split_sections()` → per-section `extract_*()` → dict of DataFrames → CSV or stdout.
 
@@ -67,4 +67,4 @@ Top-level function that calls all extractors in order and returns a dict:
 
 ## Data
 
-Sample reports are in [data/](data/) (`.txt` format). Pre-exported CSVs are in [out/](out/). The `.ipynb` notebook at [src/poc.ipynb](src/poc.ipynb) is used for interactive exploration.
+Source reports (`.txt`) are in [data/](data/). Test reports are under [data/test/](data/test/). Generated CSV exports go to `out/` (gitignored — regenerate with `-o out/`). The `.ipynb` notebooks at [src/poc.ipynb](src/poc.ipynb) and [src/results_extraction.ipynb](src/results_extraction.ipynb) are used for interactive exploration.
