@@ -14,8 +14,6 @@ wheels/
 out/
 note.txt
 
-# Generated CSV exports (re-producible from source .txt reports)
 data/**/*.csv
-
-# Raw data binary files (use shared drive / DVC instead)
 data/**/*.xlsx
+data/**/*.txt
