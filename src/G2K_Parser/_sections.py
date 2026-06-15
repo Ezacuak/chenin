@@ -21,7 +21,7 @@ s3_header_pattern = re.compile(
     re.MULTILINE,
 )
 s3_data_pattern = re.compile(
-    r"^\s*([A-Z]{1,2}-\d{1,3})?\s*(\d+\.\d+)?\s*(\d+\.\d+)(\*?)\s*(@?)\s*(\d+\.\d+)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)$",
+    r"^\s*([A-Z]{1,2}-\d{1,3})?\s*(\d+\.\d+)?\s*(\d+\.\d+)(\*?)\s*(@?)\s*(\d+\.\d+)\s*(?:(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?))?$",
     re.MULTILINE,
 )
 s4_header_1_pattern = re.compile(
@@ -76,48 +76,52 @@ def extract_s1(content):
 #############
 def extract_header_s2(content):
     match = re.search(s2_header_pattern, content)
+
     if not match:
         return None
-    return [
-        "Marker",
-        f"{match.group(1)} {match.group(9)}",
-        f"{match.group(2)} {match.group(10)}",
-        f"{match.group(3)} {match.group(11)}",
-        match.group(4),
-        f"{match.group(5)} {match.group(12)}",
-        f"{match.group(6)} {match.group(13)}",
-        match.group(7),
-        match.group(8),
-        f"{match.group(8)} {match.group(13)}",
+
+    columns = [
+        "Marker",  # Marqueur (M, m, F)
+        f"{match.group(1)} {match.group(10)}",  # Numéro du pic
+        f"{match.group(2)} {match.group(11)}",  # Début (canaux)
+        f"{match.group(3)} {match.group(11)}",  # Fin (canaux)
+        match.group(4),  # Centroïde
+        f"{match.group(5)} {match.group(12)}",  # Energie (keV)
+        f"{match.group(6)} {match.group(13)}",  # FWHM (keV)
+        match.group(7),  # Surface
+        match.group(8),  # Incert.
+        f"{match.group(9)} {match.group(14)}",  # Fond sous le pic
     ]
+
+    return columns
 
 
 def extract_data_s2(content, header):
     matches = re.findall(s2_data_pattern, content)
     df = pd.DataFrame(matches, columns=header)
+
     df["Marker"] = df["Marker"].replace("", np.nan)
     df = df.astype({"Marker": "category"})
     df = df.astype(
         {
-            "Numéro Fond sous": "float64",
-            "Début du pic": "float64",
-            "Fin (canaux)": "float64",
+            "Numéro du pic": "int64",
+            "Début (canaux)": "int64",
+            "Fin (canaux)": "int64",
             "Centroïde": "float64",
             "Energie (keV)": "float64",
             "FWHM (keV)": "float64",
             "Surface": "float64",
             "Incert.": "float64",
-            "Incert. (keV)": "float64",
+            "Fond sous le pic": "float64",
         }
     )
+
     return df
 
 
 #############
 # Section 3 #
 #############
-
-
 def extract_header_s3(content):
     matches = re.search(s3_header_pattern, content)
     if not matches:
@@ -141,10 +145,6 @@ def extract_data_s3(content, header):
     df["Indice de confiance"] = df["Indice de confiance"].replace("", np.nan)
     df = df.astype(
         {
-            "Energie (keV)": "float64",
-            "Intensité (%)": "float64",
-            "Activité (mBq/g   )": "float64",
-            "Incert. (mBq/g   )": "float64",
             "Indice de confiance": "float64",
         }
     )
@@ -158,8 +158,6 @@ def extract_data_s3(content, header):
 #############
 # Section 4 #
 #############
-
-
 def extract_header_1_s4(content):
     matches = re.search(s4_header_1_pattern, content)
     if not matches:

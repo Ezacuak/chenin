@@ -56,6 +56,17 @@ class Report:
             "s6": Utils.normalize_columns(data_s6),
         }
 
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return list(self.report.values())[key]
+
+        if isinstance(key, str):
+            return self.report[key]
+
+        raise TypeError(
+            f"L'index doit être un entier ou une chaîne, pas {type(key).__name__}"
+        )
+
     def __str__(self) -> str:
         sb = ""
 
