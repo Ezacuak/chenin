@@ -5,6 +5,9 @@ import unicodedata
 import numpy as np
 import pandas as pd
 
+###################################################
+#                      Regex                      #
+###################################################
 section_header_pattern = re.compile(r"^\*+$\n^\*{5}(.*)\*{5}$\n^\*+$", re.MULTILINE)
 s1_kv_pattern = re.compile(r"^([^:]*):(.*)$", re.MULTILINE)
 s2_header_pattern = re.compile(
@@ -55,6 +58,11 @@ s6_nucleide_line_pattern = re.compile(
 )
 
 
+###################################################
+#                      Utils                      #
+###################################################
+
+
 def strip_accents(s):
     return "".join(
         c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn"
@@ -81,6 +89,14 @@ def split_sections(content):
     return sections_titles, sections_content
 
 
+###################################################
+#                    Sections                     #
+###################################################
+
+
+#############
+# Section 1 #
+#############
 def extract_s1(content):
     matches = s1_kv_pattern.findall(content)
     return pd.DataFrame(
@@ -88,6 +104,9 @@ def extract_s1(content):
     )
 
 
+#############
+# Section 2 #
+#############
 def extract_header_s2(content):
     match = re.search(s2_header_pattern, content)
     if not match:
@@ -127,6 +146,11 @@ def extract_data_s2(content, header):
     return df
 
 
+#############
+# Section 3 #
+#############
+
+
 def extract_header_s3(content):
     matches = re.search(s3_header_pattern, content)
     if not matches:
@@ -162,6 +186,11 @@ def extract_data_s3(content, header):
         {"Nom du nucléide": "category", "Marker *": "bool", "Marker @": "bool"}
     )
     return df
+
+
+#############
+# Section 4 #
+#############
 
 
 def extract_header_1_s4(content):
@@ -236,6 +265,11 @@ def extract_data_2_s4(content, header):
     return df
 
 
+#############
+# Section 5 #
+#############
+
+
 def extract_header_s5(content):
     matches = re.search(s5_header_pattern, content)
     if not matches:
@@ -285,6 +319,11 @@ def extract_data_s5(content, header):
     )
     df = df.fillna({"Nom du nucléide": df["Nom du nucléide"].ffill()})
     return df
+
+
+#############
+# Section 6 #
+#############
 
 
 def extract_header_s6(content):
