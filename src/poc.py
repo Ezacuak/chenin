@@ -563,8 +563,6 @@ df = report(f"../data/NOI_S/NOI_S_{ech}.txt")["s5"]
 # for i in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 16]:
 # df = pd.concat([df, report(f"../data/NOI_S/NOI_S_{i}.txt")[f"s{section}"]], ignore_index=True)
 
-df
-
 
 # %% [markdown]
 # ### Qualité des donneés
