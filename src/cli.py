@@ -1,6 +1,6 @@
 import argparse
 
-from parser import parse_report
+from G2K_Parser import Report
 
 SECTION_DESCRIPTIONS = {
     "s1": "Rapport de l'analyse du spectre (métadonnées)",
@@ -36,7 +36,7 @@ def main():
     )
     args = parser.parse_args()
 
-    data = parse_report(args.report)
+    data = Report(args.report)
 
     if args.section:
         print(data[args.section].to_string())
