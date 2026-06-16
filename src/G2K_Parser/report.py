@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Any, Dict
+
 from ._sections import (
     extract_data_1_s4,
     extract_data_2_s4,
@@ -16,12 +19,13 @@ from ._sections import (
 from .utils import Utils
 
 
-class Report:
+class Report(Mapping):
     def __init__(self, path: str) -> None:
         self.file = path
+        self.report = self._parse_report()
         self._parse_report()
 
-    def _parse_report(self) -> None:
+    def _parse_report(self) -> Dict:
         with open(self.file) as f:
             content = f.read()
 
@@ -46,7 +50,7 @@ class Report:
         header_s6 = extract_header_s6(sections[titles[5]])
         data_s6 = extract_data_s6(sections[titles[5]], header_s6)
 
-        self.report = {
+        return {
             "s1": Utils.normalize_columns(data_s1),
             "s2": Utils.normalize_columns(data_s2),
             "s3": Utils.normalize_columns(data_s3),
@@ -56,16 +60,20 @@ class Report:
             "s6": Utils.normalize_columns(data_s6),
         }
 
-    def __getitem__(self, key):
+    def to_csv(self):
+        for df in self.report:
+            pass
+
+    def __getitem__(self, key: Any) -> Any:
         if isinstance(key, int):
             return list(self.report.values())[key]
+        return self.report[key]
 
-        if isinstance(key, str):
-            return self.report[key]
+    def __iter__(self):
+        return iter(self.report)
 
-        raise TypeError(
-            f"L'index doit être un entier ou une chaîne, pas {type(key).__name__}"
-        )
+    def __len__(self) -> int:
+        return len(self.report)
 
     def __str__(self) -> str:
         sb = ""
