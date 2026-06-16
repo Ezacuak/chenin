@@ -143,6 +143,8 @@ def extract_data_s3(content, header):
     df = pd.DataFrame(matches, columns=header)
     df["Nom du nucléide"] = df["Nom du nucléide"].replace("", np.nan)
     df["Indice de confiance"] = df["Indice de confiance"].replace("", np.nan)
+    df["Activité (mBq/g   )"] = df["Activité (mBq/g   )"].replace("", np.nan)
+    df["Incert. (mBq/g   )"] = df["Incert. (mBq/g   )"].replace("", np.nan)
     df = df.astype(
         {
             "Indice de confiance": "float64",
