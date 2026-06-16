@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ptal-analyse = "cli:main"
+chenin = "cli:main"
 
 [dependency-groups]
 dev = [
