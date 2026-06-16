@@ -15,7 +15,6 @@ Parses **Génie 2000 (G2K)** gamma spectrometry reports into pandas DataFrames a
 
 ## Installation
 
-### Option 1: Development (local)
 
 Requires Python >= 3.14 and [uv](https://docs.astral.sh/uv/):
 
@@ -31,13 +30,10 @@ uv sync
 uv run src/poc.py report.txt
 ```
 
-### Option 2: Global tool installation
-
-Install as a global command available anywhere on your system:
-
+Or
 ```sh
-# From git repository
-uv tool install git+https://codeberg.org/Ezacuak/ptal-analyse
+# Install it as a tool
+uv tool install .
 
 # Then use directly
 ptal-analyse report.txt
@@ -67,8 +63,6 @@ For prototyping and analysis, launch Jupyter:
 uv run jupyter lab
 ```
 
-Then open [src/poc.ipynb](src/poc.ipynb) for interactive extraction and testing.
-
 ## Project Structure
 
 ```
@@ -77,17 +71,6 @@ ptal-analyse/
 ├── src/
 │   ├── poc.py      CLI and extraction logic
 │   └── poc.ipynb   Jupyter notebook for exploration
-├── CLAUDE.md       Architecture and design notes
 ├── pyproject.toml
 └── uv.lock
 ```
-
-## Development
-
-Lint with ruff:
-
-```sh
-uvx ruff check src/
-```
-
-No test suite configured yet.
