@@ -1,4 +1,4 @@
-from G2K_Parser import Report
+from .report import Report
 
 
 def main():
