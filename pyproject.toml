@@ -1,5 +1,5 @@
 [project]
-name = "ptal-analyse"
+name = "chenin"
 version = "0.1.0"
 description = "Tool for EDYTEM-PTAL, Extracte data from G2K report"
 readme = "README.md"
@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ptal-analyse = "main:main"
+chenin = "cli:main"
 
 [dependency-groups]
 dev = [

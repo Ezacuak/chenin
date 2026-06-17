@@ -17,3 +17,8 @@ note.txt
 data/**/*.csv
 data/**/*.xlsx
 data/**/*.txt
+
+# AI and Agents
+.claude/
+CLAUDE.md
+AGENTS.md
