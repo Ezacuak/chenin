@@ -5,6 +5,12 @@ from g2k_parser import G2KParser, Parser
 
 
 class Report(Mapping):
+    """
+    Build report from a parser
+
+    For now just G2K
+    """
+
     def __init__(self, path: str, parser: Parser | None = None) -> None:
         self.filepath = path
         self.parser = parser or G2KParser()
