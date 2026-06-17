@@ -21,12 +21,25 @@ from .utils import normalize_columns, split_sections
 
 
 class Parser(ABC):
+    """Abstract class of Parser"""
+
     @abstractmethod
     def parse(self, path: str) -> dict[str, pd.DataFrame]: ...
 
 
 class G2KParser(Parser):
+    """
+    Implement Parser class to extract G2K report
+
+    Extract 6 sections from a report file (`txt` format)
+    """
+
     def parse(self, path: str) -> dict[str, pd.DataFrame]:
+        """
+        Parse the report in section.
+
+        Then extract header and data from each section to a dictionary of Pandas DataFrame.
+        """
         with open(path) as f:
             content = f.read()
 

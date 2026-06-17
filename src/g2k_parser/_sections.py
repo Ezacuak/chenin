@@ -65,6 +65,7 @@ S6_NUCLEIDE_LINE_PATTERN = re.compile(
 # Section 1 #
 #############
 def extract_s1(content):
+    """extract section 1"""
     matches = S1_KV_PATTERN.findall(content)
     return pd.DataFrame(
         {key.strip(): value.strip() for key, value in matches}, index=[0]
@@ -75,6 +76,7 @@ def extract_s1(content):
 # Section 2 #
 #############
 def extract_s2_header(content):
+    """extract header  of section 2"""
     match = re.search(S2_HEADER_PATTERN, content)
 
     if not match:
@@ -97,6 +99,7 @@ def extract_s2_header(content):
 
 
 def extract_s2_data(content, header):
+    """extract data of section 2"""
     matches = re.findall(S2_DATA_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
 
@@ -123,6 +126,7 @@ def extract_s2_data(content, header):
 # Section 3 #
 #############
 def extract_s3_header(content):
+    """extract header of section 3"""
     matches = re.search(S3_HEADER_PATTERN, content)
     if not matches:
         return None
@@ -139,6 +143,7 @@ def extract_s3_header(content):
 
 
 def extract_s3_data(content, header):
+    """extract data of section 3"""
     matches = re.findall(S3_DATA_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df["Nom du nucléide"] = df["Nom du nucléide"].replace("", np.nan)
@@ -161,6 +166,7 @@ def extract_s3_data(content, header):
 # Section 4 #
 #############
 def extract_s4_nucleides_header(content):
+    """extract header (nucleide part) of section 4"""
     matches = re.search(S4_HEADER_1_PATTERN, content)
     if not matches:
         return None
@@ -175,6 +181,7 @@ def extract_s4_nucleides_header(content):
 
 
 def extract_s4_pics_header(content):
+    """extract header (pic part) of section 4"""
     matches = re.search(S4_HEADER_2_PATTERN, content)
     if not matches:
         return None
@@ -190,6 +197,7 @@ def extract_s4_pics_header(content):
 
 
 def extract_s4_nucleides_data(content, header):
+    """extract data (nucleide part) of section 4"""
     matches = re.findall(S4_DATA_1_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df = df.astype({"Marker (X)": "bool", "Marker (@)": "bool"})
@@ -209,6 +217,7 @@ def extract_s4_nucleides_data(content, header):
 
 
 def extract_s4_pics_data(content, header):
+    """extract data (pic part) of section 4"""
     matches = re.findall(S4_DATA_2_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df["Marker (M/m/F)"] = df["Marker (M/m/F)"].replace("", np.nan)
@@ -238,6 +247,7 @@ def extract_s4_pics_data(content, header):
 
 
 def extract_s5_header(content):
+    """extract header of section 5"""
     matches = re.search(S5_HEADER_PATTERN, content)
     if not matches:
         return None
@@ -258,6 +268,7 @@ def extract_s5_header(content):
 
 
 def extract_s5_data(content, header):
+    """extract data of section 5"""
     matches = re.findall(S5_DATA_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df["Nom du nucléide"] = df["Nom du nucléide"].replace("", np.nan)
@@ -294,6 +305,7 @@ def extract_s5_data(content, header):
 
 
 def extract_s6_header(content):
+    """extract header of section 6"""
     header = []
     matches = re.findall(S6_HEADER_PATTERN, content)
     l1 = re.findall(S6_WORD_COLUMN_PATTERN, matches[0][0])
@@ -306,6 +318,7 @@ def extract_s6_header(content):
 
 
 def extract_s6_data(content, header):
+    """extract data of section 6"""
     matches = re.findall(S6_NUCLEIDE_LINE_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df = df.astype({"Nucléide": "category"})
