@@ -1,6 +1,6 @@
 import argparse
 
-from G2K_Parser import Report
+from .report import Report
 
 SECTION_DESCRIPTIONS = {
     "s1": "Rapport de l'analyse du spectre (métadonnées)",

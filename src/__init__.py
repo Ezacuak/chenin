@@ -1,3 +1,4 @@
-from .G2K_Parser import SECTION_DESCRIPTIONS, parse_report
+from .g2k_parser import G2KParser, Parser
+from .report import Report
 
-__all__ = ["parse_report", "SECTION_DESCRIPTIONS"]
+__all__ = ["G2KParser", "Parser", "Report"]
