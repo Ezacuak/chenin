@@ -7,50 +7,50 @@ import pandas as pd
 #                      Regex                      #
 ###################################################
 
-s1_kv_pattern = re.compile(r"^([^:]*):(.*)$", re.MULTILINE)
-s2_header_pattern = re.compile(
+S1_KV_PATTERN = re.compile(r"^([^:]*):(.*)$", re.MULTILINE)
+S2_HEADER_PATTERN = re.compile(
     r"(Numéro)\s+(Début)\s+-\s+(Fin)\s+(Centroïde)\s+(Energie)\s+(FWHM)\s+(Surface)\s+(Incert\.)\s+(Fond sous)\s*\r?\n^\s*(du pic)\s+(\(canaux\))\s+(\(keV\))\s+(\(keV\))\s+(le pic)",
     re.MULTILINE,
 )
-s2_data_pattern = re.compile(
+S2_DATA_PATTERN = re.compile(
     r"^\s*([MmF]?)\s*(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+-\s*(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)",
     re.MULTILINE,
 )
-s3_header_pattern = re.compile(
+S3_HEADER_PATTERN = re.compile(
     r"^\s+(Nom\sdu)\s+(Indice\sde)\s+(Energie)\s+(Intensité)\s+(Activité)\s+(Incert\.)$\n^\s+(nucléide)\s+(confiance)\s+(\W\w+\W)\s+(\W%\W)\s+(\WmBq\Wg\s+\W)\s+(\WmBq\Wg\s+\W)\n",
     re.MULTILINE,
 )
-s3_data_pattern = re.compile(
+S3_DATA_PATTERN = re.compile(
     r"^\s*([A-Z]{1,2}-\d{1,3})?\s*(\d+\.\d+)?\s*(\d+\.\d+)(\*?)\s*(@?)\s*(\d+\.\d+)\s*(?:(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?))?$",
     re.MULTILINE,
 )
-s4_header_1_pattern = re.compile(
+S4_HEADER_1_PATTERN = re.compile(
     r"^\s*(Nom du)\s+(Indice de)\s+(Activité moyenne)\s+(Incert\.)$\n^\s+(nucléide)\s+(confiance)\s+(pondérée)$\n^\s+(\WmBq\Wg\s+\W)\s+(\WmBq\Wg\s+\W)$",
     re.MULTILINE,
 )
-s4_header_2_pattern = re.compile(
+S4_HEADER_2_PATTERN = re.compile(
     r"^\s*(Numéro)\s+(Energie)\s+(Intensité)\s+(Incert\.)\s+(Type)\s+(Nucléide)$\n^\s+(du pic)\s+(\WkeV\W)\s+(\Wcoups\Wsec\W)\s+(du pic)\s+(potentiel)$",
     re.MULTILINE,
 )
-s4_data_1_pattern = re.compile(
+S4_DATA_1_PATTERN = re.compile(
     r"^\s*(X?)\s+([A-Z]{1,2}-\d{1,3})\s*(@?)\s+(\d+\.\d+)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)?\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)?",
     re.MULTILINE,
 )
-s4_data_2_pattern = re.compile(
+S4_DATA_2_PATTERN = re.compile(
     r"^\s+([MmF])?\s*(\d+)\s+(\d+\.\d+)\s+(\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+(\d+\.\d+)\s*(Sum|D-Esc\.|S-Esc\.|Tol\.)?\s*([A-Z]{1,2}-\d{1,3})?\s*$",
     re.MULTILINE,
 )
-s5_header_pattern = re.compile(
+S5_HEADER_PATTERN = re.compile(
     r"^\s+(Nom\sdu)\s+(Energie)\s+(Intensité)\s*(LD\sEnergie)\s*(LD\snucléide)\s+(Activité)\s+(SD\sEnergie)$\n^\s+(nucléide)\s+(\WkeV\W)\s+(\W%\W)\s+(\WmBq\Wg\s+\W)\s+(\WmBq\Wg\s+\W)\s+(\WmBq\Wg\s+\W)\s+\s+(\WmBq\Wg\s+\W)$",
     re.MULTILINE,
 )
-s5_data_pattern = re.compile(
+S5_DATA_PATTERN = re.compile(
     r"^\s*(\+?)\s*(\??)\s*(>?)\s*([A-Z]{1,2}-\d{1,3})?\s+(\d+\.\d+)(\*?)\s*(@?)\s+(\d+\.\d+)\s+([+\-]?\d+(?:\.\d+)?(?:E[+\-]?\d+)?|Non\sCalc)(?:\s*([+\-]?\d+(?:\.\d+)?(?:E[+\-]?\d+)?))?\s+([+\-]?\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+([+\-]?\d+(?:\.\d+)?(?:E[+\-]?\d+)?)$",
     re.MULTILINE,
 )
-s6_header_pattern = re.compile(r"^\s+(.*)$\n^\s+(.*)$", re.MULTILINE)
-s6_word_column_pattern = re.compile(r"([A-Za-zÀ-ÿ]+\.?)")
-s6_nucleide_line_pattern = re.compile(
+S6_HEADER_PATTERN = re.compile(r"^\s+(.*)$\n^\s+(.*)$", re.MULTILINE)
+S6_WORD_COLUMN_PATTERN = re.compile(r"([A-Za-zÀ-ÿ]+\.?)")
+S6_NUCLEIDE_LINE_PATTERN = re.compile(
     r"^[+>?]\s+([A-Z]{1,2}-\d{1,3})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)",
     re.MULTILINE,
 )
@@ -65,7 +65,7 @@ s6_nucleide_line_pattern = re.compile(
 # Section 1 #
 #############
 def extract_s1(content):
-    matches = s1_kv_pattern.findall(content)
+    matches = S1_KV_PATTERN.findall(content)
     return pd.DataFrame(
         {key.strip(): value.strip() for key, value in matches}, index=[0]
     )
@@ -75,7 +75,7 @@ def extract_s1(content):
 # Section 2 #
 #############
 def extract_s2_header(content):
-    match = re.search(s2_header_pattern, content)
+    match = re.search(S2_HEADER_PATTERN, content)
 
     if not match:
         return None
@@ -97,7 +97,7 @@ def extract_s2_header(content):
 
 
 def extract_s2_data(content, header):
-    matches = re.findall(s2_data_pattern, content)
+    matches = re.findall(S2_DATA_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
 
     df["Marker"] = df["Marker"].replace("", np.nan)
@@ -123,7 +123,7 @@ def extract_s2_data(content, header):
 # Section 3 #
 #############
 def extract_s3_header(content):
-    matches = re.search(s3_header_pattern, content)
+    matches = re.search(S3_HEADER_PATTERN, content)
     if not matches:
         return None
     return [
@@ -139,7 +139,7 @@ def extract_s3_header(content):
 
 
 def extract_s3_data(content, header):
-    matches = re.findall(s3_data_pattern, content)
+    matches = re.findall(S3_DATA_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df["Nom du nucléide"] = df["Nom du nucléide"].replace("", np.nan)
     df["Indice de confiance"] = df["Indice de confiance"].replace("", np.nan)
@@ -161,7 +161,7 @@ def extract_s3_data(content, header):
 # Section 4 #
 #############
 def extract_s4_nucleides_header(content):
-    matches = re.search(s4_header_1_pattern, content)
+    matches = re.search(S4_HEADER_1_PATTERN, content)
     if not matches:
         return None
     return [
@@ -175,7 +175,7 @@ def extract_s4_nucleides_header(content):
 
 
 def extract_s4_pics_header(content):
-    matches = re.search(s4_header_2_pattern, content)
+    matches = re.search(S4_HEADER_2_PATTERN, content)
     if not matches:
         return None
     return [
@@ -190,7 +190,7 @@ def extract_s4_pics_header(content):
 
 
 def extract_s4_nucleides_data(content, header):
-    matches = re.findall(s4_data_1_pattern, content)
+    matches = re.findall(S4_DATA_1_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df = df.astype({"Marker (X)": "bool", "Marker (@)": "bool"})
     df["Activité moyenne pondérée (mBq/g   )"] = df[
@@ -209,7 +209,7 @@ def extract_s4_nucleides_data(content, header):
 
 
 def extract_s4_pics_data(content, header):
-    matches = re.findall(s4_data_2_pattern, content)
+    matches = re.findall(S4_DATA_2_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df["Marker (M/m/F)"] = df["Marker (M/m/F)"].replace("", np.nan)
     df["Type du pic"] = df["Type du pic"].replace("", np.nan)
@@ -238,7 +238,7 @@ def extract_s4_pics_data(content, header):
 
 
 def extract_s5_header(content):
-    matches = re.search(s5_header_pattern, content)
+    matches = re.search(S5_HEADER_PATTERN, content)
     if not matches:
         return None
     return [
@@ -258,7 +258,7 @@ def extract_s5_header(content):
 
 
 def extract_s5_data(content, header):
-    matches = re.findall(s5_data_pattern, content)
+    matches = re.findall(S5_DATA_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df["Nom du nucléide"] = df["Nom du nucléide"].replace("", np.nan)
     df["LD Energie (mBq/g   )"] = df["LD Energie (mBq/g   )"].replace(
@@ -295,9 +295,9 @@ def extract_s5_data(content, header):
 
 def extract_s6_header(content):
     header = []
-    matches = re.findall(s6_header_pattern, content)
-    l1 = re.findall(s6_word_column_pattern, matches[0][0])
-    l2 = re.findall(s6_word_column_pattern, matches[0][1])
+    matches = re.findall(S6_HEADER_PATTERN, content)
+    l1 = re.findall(S6_WORD_COLUMN_PATTERN, matches[0][0])
+    l2 = re.findall(S6_WORD_COLUMN_PATTERN, matches[0][1])
     for a, b in zip(reversed(l1), reversed(l2)):
         header.insert(0, f"{a} {b}".strip())
     if len(l1) > len(l2):
@@ -306,7 +306,7 @@ def extract_s6_header(content):
 
 
 def extract_s6_data(content, header):
-    matches = re.findall(s6_nucleide_line_pattern, content)
+    matches = re.findall(S6_NUCLEIDE_LINE_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
     df = df.astype({"Nucléide": "category"})
     df = df.astype(
