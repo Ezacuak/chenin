@@ -1,10 +1,11 @@
-from .report import Report
+from report import Report
 
 
 def main():
     r13 = Report("./data/NOI_S/NOI_S_13.txt")
 
-    print(r13[2])
+    for k in r13:
+        print(r13[k])
 
 
 if __name__ == "__main__":
