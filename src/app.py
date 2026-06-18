@@ -40,5 +40,6 @@ for tab, uploaded_file in zip(tabs, uploaded_files):
         st.header("Sections")
 
         for key in report:
-            st.subheader(SECTION_DESCRIPTIONS[key])
-            st.dataframe(report[key])
+            with st.container(border=True):
+                st.subheader(SECTION_DESCRIPTIONS[key])
+                st.dataframe(report[key])
