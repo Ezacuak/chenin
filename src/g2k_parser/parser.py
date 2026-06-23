@@ -40,8 +40,13 @@ class G2KParser(Parser):
 
         Then extract header and data from each section to a dictionary of Pandas DataFrame.
         """
-        with open(path) as f:
-            content = f.read()
+        content = ""
+
+        try:
+            with open(path) as f:
+                content = f.read()
+        except OSError as e:
+            print(f"Error while opening the file: {e}")
 
         titles, sections = split_sections(content)
 
