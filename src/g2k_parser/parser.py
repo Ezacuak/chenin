@@ -1,5 +1,3 @@
-from abc import ABC, abstractmethod
-
 import pandas as pd
 
 from ._sections import (
@@ -20,14 +18,7 @@ from ._sections import (
 from .utils import normalize_columns, split_sections
 
 
-class Parser(ABC):
-    """Abstract class of Parser"""
-
-    @abstractmethod
-    def parse(self, path: str) -> dict[str, pd.DataFrame]: ...
-
-
-class G2KParser(Parser):
+class G2KParser:
     """
     Implement Parser class to extract G2K report
 
@@ -40,8 +31,13 @@ class G2KParser(Parser):
 
         Then extract header and data from each section to a dictionary of Pandas DataFrame.
         """
-        with open(path) as f:
-            content = f.read()
+        content = ""
+
+        try:
+            with open(path) as f:
+                content = f.read()
+        except OSError as e:
+            print(f"Error while opening the file: {e}")
 
         titles, sections = split_sections(content)
 

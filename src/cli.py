@@ -1,6 +1,9 @@
 import argparse
+import os
+import sys
 
-from report import Report
+from g2k_parser import Report
+from synthesis import SynthesisBuilder
 
 SECTION_DESCRIPTIONS = {
     "s1": "Rapport de l'analyse du spectre (métadonnées)",
@@ -12,30 +15,45 @@ SECTION_DESCRIPTIONS = {
     "s6": "Rapport limites de détection ISO 11929",
 }
 
+SUBCOMMANDS = ("extract", "synthesis")
 
-def main():
+
+def _add_extract_parser(subparsers):
     section_help = "\n".join(f"  {k:<14} {v}" for k, v in SECTION_DESCRIPTIONS.items())
-    parser = argparse.ArgumentParser(
-        description="Extrait les données structurées d'un rapport Génie200.",
+    p = subparsers.add_parser(
+        "extract",
+        help="extrait les sections d'un rapport Génie2000",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=f"sections disponibles :\n{section_help}\n\nexemples :\n"
-        "  %(prog)s rapport.txt\n"
-        "  %(prog)s rapport.txt -s s2\n"
-        "  %(prog)s rapport.txt -o data/output/",
+        epilog=f"sections disponibles :\n{section_help}",
     )
-    parser.add_argument("report", help="chemin vers le rapport Génie200 (.txt)")
-    parser.add_argument(
+    p.add_argument("report", help="chemin vers le rapport Génie2000 (.txt)")
+    p.add_argument(
         "--output", "-o", metavar="DIR", help="exporte chaque section en CSV dans DIR"
     )
-    parser.add_argument(
+    p.add_argument(
         "--section",
         "-s",
         choices=list(SECTION_DESCRIPTIONS),
         metavar="SECTION",
-        help="affiche une seule section (voir la liste ci-dessous)",
+        help="affiche une seule section",
     )
-    args = parser.parse_args()
+    p.set_defaults(func=_run_extract)
 
+
+def _add_synthesis_parser(subparsers):
+    p = subparsers.add_parser(
+        "synthesis",
+        help="construit une synthèse multi-rapports à partir d'un fichier TOML",
+    )
+    p.add_argument("config", help="chemin vers la configuration TOML de synthèse")
+    p.add_argument("reports", nargs="+", help="rapports Génie2000 (.txt), dans l'ordre")
+    p.add_argument(
+        "--output", "-o", metavar="FILE", help="écrit la synthèse en CSV dans FILE"
+    )
+    p.set_defaults(func=_run_synthesis)
+
+
+def _run_extract(args):
     data = Report(args.report)
 
     if args.section:
@@ -43,8 +61,6 @@ def main():
         return
 
     if args.output:
-        import os
-
         os.makedirs(args.output, exist_ok=True)
         for name, df in data.items():
             dest = os.path.join(args.output, f"{name}.csv")
@@ -55,6 +71,39 @@ def main():
     for name, df in data.items():
         print(f"\n=== {name} ({len(df)} rows) ===")
         print(df.to_string())
+
+
+def _run_synthesis(args):
+    builder = SynthesisBuilder.from_toml(args.config)
+    reports = [Report(path) for path in args.reports]
+    synthesis = builder.build(reports)
+
+    if args.output:
+        synthesis.to_csv(args.output, index=False)
+        print(f"Wrote {args.output}")
+        return
+
+    print(synthesis.to_string(index=False))
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Extrait et synthétise les données des rapports Génie2000.",
+    )
+    subparsers = parser.add_subparsers(dest="command")
+    _add_extract_parser(subparsers)
+    _add_synthesis_parser(subparsers)
+
+    # Backward compatibility: `chenin rapport.txt ...` still runs the extractor.
+    argv = sys.argv[1:]
+    if argv and argv[0] not in SUBCOMMANDS and argv[0] not in ("-h", "--help"):
+        argv = ["extract", *argv]
+
+    args = parser.parse_args(argv)
+    if not getattr(args, "func", None):
+        parser.print_help()
+        return
+    args.func(args)
 
 
 if __name__ == "__main__":
