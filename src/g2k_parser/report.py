@@ -3,6 +3,7 @@ from typing import Any
 
 from .parser import G2KParser
 
+
 class Report(Mapping):
     """
     Build report from a parser
@@ -10,8 +11,9 @@ class Report(Mapping):
     For now just G2K
     """
 
-    def __init__(self, path: str, parser: G2KParser| None = None) -> None:
+    def __init__(self, path: str, parser: G2KParser | None = None) -> None:
         self.filepath = path
+        self.metadata = {}
         self.parser = G2KParser()
         self._data = self.parser.parse(path)
 
