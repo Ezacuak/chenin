@@ -12,11 +12,15 @@ wheels/
 .ruff_cache/
 
 out/
+test/
 note.txt
 
+data/
 data/**/*.csv
 data/**/*.xlsx
 data/**/*.txt
+data/**/*.toml
+
 
 # AI and Agents
 .claude/
