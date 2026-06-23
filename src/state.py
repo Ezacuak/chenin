@@ -4,7 +4,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from report import Report
+from g2k_parser import Report
 
 REPORTS_KEY = "report_files"
 SYNTHESIS_KEY = "synthesis"
