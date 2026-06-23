@@ -1,13 +1,3 @@
-"""Shared session state for the Streamlit app.
-
-Single source of truth for uploaded reports: the upload page stores raw file
-bytes here, and every page reads parsed ``Report`` objects back through
-``get_reports()``. Parsing is cached so each file is parsed only once.
-
-Imported bare (``import state``) like the other ``src/`` modules, since
-Streamlit puts ``src/`` on ``sys.path`` when it runs ``app.py``.
-"""
-
 import hashlib
 import tempfile
 from pathlib import Path

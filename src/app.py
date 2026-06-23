@@ -5,9 +5,9 @@ st.markdown("A tool to extract data from `Génie200` report.")
 st.divider()
 
 pages = {
-    "Tools": [
-        st.Page("pages/report.py", title="Rapport Génie2000"),
-        st.Page("pages/summary.py", title="Synthèse des rapport"),
+    "Outils": [
+        st.Page("pages/report.py", title="Extracteur de rapport"),
+        st.Page("pages/synthesis.py", title="Constructeur de synthese"),
     ]
 }
 
