@@ -1,8 +1,11 @@
+import pandas as pd
 import state
 import streamlit as st
 from components.export import export_widget
 
 from g2k_parser import SECTION_DESCRIPTIONS
+
+pd.set_option("display.float_format", lambda x: f"{x:f}")
 
 st.title("Extraction de rapport")
 
