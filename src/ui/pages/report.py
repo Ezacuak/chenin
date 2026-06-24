@@ -1,5 +1,6 @@
 import state
 import streamlit as st
+from components.export import export_widget
 
 from g2k_parser import SECTION_DESCRIPTIONS
 
@@ -32,4 +33,6 @@ for tab, (name, report) in zip(tabs, reports.items()):
         for key in report:
             with st.container(border=True):
                 st.subheader(SECTION_DESCRIPTIONS[key])
-                st.dataframe(report[key])
+                df = report[key]
+                st.dataframe(df)
+                export_widget(df, filename=f"{name}-{key}")

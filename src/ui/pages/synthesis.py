@@ -1,6 +1,7 @@
 import state
 import streamlit as st
 
+from components.export import export_widget
 from synthesis import SynthesisBuilder
 
 st.title("Synthèse")
@@ -28,13 +29,22 @@ if not toml_synthesis_file:
     )
     st.stop()
 
-# ----------------------------- Contruction de la synthese -----------------------------#
+# ----------------------------- Construction de la synthese ----------------------------#
 
-with st.container(border=True):
-    builder = SynthesisBuilder.from_toml(toml_synthesis_file)
+builder = SynthesisBuilder.from_toml(toml_synthesis_file)
 
+ordered_reports = [reports[k] for k in sorted(reports)]
+
+if st.button("Générer la synthèse", type="primary"):
+    try:
+        df = builder.build(ordered_reports)
+        state.store_synthesis(df)
+    except Exception as e:
+        st.error(f"Erreur lors de la génération : {e}")
+        st.stop()
 
 # ------------------------------ Affichage de la synthese ------------------------------#
+
 df = state.get_synthesis()
 if df is None:
     st.info("Cliquez sur « Générer » pour construire la synthèse.")
@@ -42,9 +52,4 @@ if df is None:
 
 st.dataframe(df)
 
-st.download_button(
-    "Télécharger en CSV",
-    data=df.to_csv(index=False).encode("utf-8"),
-    file_name="synthese.csv",
-    mime="text/csv",
-)
+export_widget(df, filename="synthese")
