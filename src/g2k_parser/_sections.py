@@ -153,6 +153,8 @@ def extract_s3_data(content, header):
     df = df.astype(
         {
             "Indice de confiance": "float64",
+            "Activité (mBq/g   )": "float64",
+            "Incert. (mBq/g   )": "float64",
         }
     )
     df = df.fillna({"Nom du nucléide": df["Nom du nucléide"].ffill()})
@@ -207,9 +209,9 @@ def extract_s4_nucleides_data(content, header):
     df["Incert. (mBq/g   )"] = df["Incert. (mBq/g   )"].replace("", np.nan)
     df = df.astype(
         {
-            "Indice de confiance": "object",
-            "Activité moyenne pondérée (mBq/g   )": "object",
-            "Incert. (mBq/g   )": "object",
+            "Indice de confiance": "float64",
+            "Activité moyenne pondérée (mBq/g   )": "float64",
+            "Incert. (mBq/g   )": "float64",
             "Nom du nucléide": "category",
         }
     )
