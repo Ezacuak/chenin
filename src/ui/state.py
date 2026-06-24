@@ -2,12 +2,14 @@ import hashlib
 import tempfile
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 from g2k_parser import Report
 
 REPORTS_KEY = "report_files"
 SYNTHESIS_KEY = "synthesis"
+SYNTHESIS_ORDER_KEY = "synthesis_order"
 
 
 @st.cache_resource(hash_funcs={bytes: hashlib.md5})
@@ -41,3 +43,16 @@ def get_reports() -> tuple[dict[str, Report], dict[str, str]]:
         except Exception as exc:  # noqa: BLE001 - surfaced to the user in the UI
             errors[name] = str(exc)
     return reports, errors
+
+
+def store_synthesis(df: pd.DataFrame) -> None:
+    """Persist the built synthesis and the ``numero -> report name`` mapping.
+
+    The order map lets the core-visualization page link a slice back to the
+    G2K report it was built from.
+    """
+    st.session_state[SYNTHESIS_KEY] = df
+
+
+def get_synthesis() -> pd.DataFrame | None:
+    return st.session_state.get(SYNTHESIS_KEY)

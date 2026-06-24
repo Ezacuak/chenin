@@ -1,5 +1,6 @@
 import tomllib
 from dataclasses import dataclass, field
+from io import BufferedReader
 
 PROVIDERS = ("report", "mean", "calculated")
 
@@ -42,10 +43,14 @@ class SynthesisConfig:
     columns: list[ColumnSpec]
 
     @classmethod
-    def from_toml(cls, path: str) -> "SynthesisConfig":
+    def from_toml(cls, file: str | BufferedReader) -> "SynthesisConfig":
         """Load and validate a configuration from a TOML file."""
-        with open(path, "rb") as f:
-            raw = tomllib.load(f)
+
+        if isinstance(file, str):
+            with open(file, "rb") as f:
+                raw = tomllib.load(f)
+        else:
+            raw = tomllib.load(file)
         return cls.from_dict(raw)
 
     @classmethod

@@ -27,5 +27,6 @@ data/**/*.toml
 
 # AI and Agents
 .claude/
+.agents/
 CLAUDE.md
 AGENTS.md
