@@ -19,7 +19,7 @@ def main():
 
 
 def streamlit():
-    sys.argv = ["streamlit", "run", "src/ui/app.py"]
+    sys.argv = ["streamlit", "run", "src/app.py"]
     sys.exit(stcli.main())
 
 

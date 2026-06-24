@@ -12,7 +12,7 @@ def export_widget(df: pd.DataFrame, filename: str = "export") -> None:
     )
 
     if fmt == "CSV":
-        data = df.to_csv(sep=";", index=False).encode("utf-8")
+        data = df.to_csv(sep=";", index=False, float_format="%.6f").encode("utf-8")
         mime = "text/csv"
         ext = "csv"
     else:
