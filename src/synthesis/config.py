@@ -2,8 +2,6 @@ import tomllib
 from dataclasses import dataclass, field
 from io import BufferedReader
 
-from streamlit.runtime.uploaded_file_manager import UploadedFile
-
 PROVIDERS = ("report", "mean", "calculated")
 
 
@@ -45,10 +43,13 @@ class SynthesisConfig:
     columns: list[ColumnSpec]
 
     @classmethod
-    def from_toml(cls, file: UploadedFile) -> "SynthesisConfig":
-        """Load and validate a configuration from a TOML file."""
-
-        raw = tomllib.load(file)
+    def from_toml(cls, file: str | BufferedReader) -> "SynthesisConfig":
+        """Load and validate a configuration from a TOML file path or binary file-like object."""
+        if isinstance(file, str):
+            with open(file, "rb") as f:
+                raw = tomllib.load(f)
+        else:
+            raw = tomllib.load(file)
         return cls.from_dict(raw)
 
     @classmethod
