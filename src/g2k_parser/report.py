@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from .parser import G2KParser
@@ -13,7 +14,7 @@ class Report(Mapping):
 
     def __init__(self, path: str, parser: G2KParser | None = None) -> None:
         self.filepath = path
-        self.metadata = {}
+        self.id = Path(path).stem
         self.parser = G2KParser()
         self._data = self.parser.parse(path)
 

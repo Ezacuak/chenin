@@ -1,24 +1,21 @@
+import state
 import streamlit as st
 
-import state
 from g2k_parser import SECTION_DESCRIPTIONS
 
 st.title("Extraction de rapport")
 
 with st.sidebar:
     st.header("Ouvrir des rapports")
-    uploaded_files = st.file_uploader(
+    reports_files = st.file_uploader(
         "Sélectionner un ou plusieurs fichiers de rapport G2K",
         type=["txt", "pdf"],
         accept_multiple_files=True,
     )
 
-state.store_uploaded(uploaded_files)
+state.store_reports(reports_files)
 
-reports, errors = state.get_reports()
-
-for name, message in errors.items():
-    st.error(f"Échec de l'analyse de {name} : {message}")
+reports = state.get_reports()
 
 if not reports:
     st.info(

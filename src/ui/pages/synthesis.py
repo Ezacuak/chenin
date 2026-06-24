@@ -8,16 +8,13 @@ st.markdown("Construire une synthèse à partir des rapports chargés.")
 
 with st.sidebar:
     st.header("Modèle de synthèse")
-    synthesis_file = st.file_uploader(
+    toml_synthesis_file = st.file_uploader(
         "Sélectionner le fichier de synthèse (.toml)",
         type=["toml"],
         accept_multiple_files=False,
     )
 
-reports, errors = state.get_reports()
-
-for name, message in errors.items():
-    st.error(f"Échec de l'analyse de {name} : {message}")
+reports = state.get_reports()
 
 if not reports:
     st.info(
@@ -25,7 +22,7 @@ if not reports:
     )
     st.stop()
 
-if not synthesis_file:
+if not toml_synthesis_file:
     st.info(
         "Chargez un fichier de configuration .toml (ou cochez « modèle par défaut »)."
     )
@@ -34,14 +31,7 @@ if not synthesis_file:
 # ----------------------------- Contruction de la synthese -----------------------------#
 
 with st.container(border=True):
-    builder = SynthesisBuilder.from_toml()
-
-
-
-
-
-
-
+    builder = SynthesisBuilder.from_toml(toml_synthesis_file)
 
 
 # ------------------------------ Affichage de la synthese ------------------------------#
