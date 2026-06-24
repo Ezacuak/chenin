@@ -2,9 +2,10 @@ import argparse
 import os
 import sys
 
-from g2k_parser import Report
+from g2k_parser import SECTION_DESCRIPTIONS, Report
 from synthesis import SynthesisBuilder
 
+SUBCOMMANDS = ("extract", "synthesis")
 
 
 def _add_extract_parser(subparsers):

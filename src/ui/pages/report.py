@@ -1,24 +1,22 @@
-import streamlit as st
-
 import state
+import streamlit as st
+from components.export import export_widget
+
 from g2k_parser import SECTION_DESCRIPTIONS
 
 st.title("Extraction de rapport")
 
 with st.sidebar:
     st.header("Ouvrir des rapports")
-    uploaded_files = st.file_uploader(
+    reports_files = st.file_uploader(
         "Sélectionner un ou plusieurs fichiers de rapport G2K",
         type=["txt", "pdf"],
         accept_multiple_files=True,
     )
 
-state.store_uploaded(uploaded_files)
+state.store_reports(reports_files)
 
-reports, errors = state.get_reports()
-
-for name, message in errors.items():
-    st.error(f"Échec de l'analyse de {name} : {message}")
+reports = state.get_reports()
 
 if not reports:
     st.info(
@@ -35,4 +33,6 @@ for tab, (name, report) in zip(tabs, reports.items()):
         for key in report:
             with st.container(border=True):
                 st.subheader(SECTION_DESCRIPTIONS[key])
-                st.dataframe(report[key])
+                df = report[key]
+                st.dataframe(df)
+                export_widget(df, filename=f"{name}-{key}")

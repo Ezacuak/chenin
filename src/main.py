@@ -1,3 +1,7 @@
+import sys
+
+import streamlit.web.cli as stcli
+
 from g2k_parser import Report
 from synthesis import SynthesisBuilder
 
@@ -14,5 +18,11 @@ def main():
     print(synthesis.to_string())
 
 
+def streamlit():
+    sys.argv = ["streamlit", "run", "src/ui/app.py"]
+    sys.exit(stcli.main())
+
+
 if __name__ == "__main__":
-    main()
+    # main()
+    streamlit()

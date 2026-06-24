@@ -1,0 +1,30 @@
+import io
+
+import pandas as pd
+import streamlit as st
+
+_FORMATS = ["CSV", "Parquet"]
+
+
+def export_widget(df: pd.DataFrame, filename: str = "export") -> None:
+    fmt = st.segmented_control(
+        "Format d'export", _FORMATS, default="CSV", key=f"export_fmt_{filename}"
+    )
+
+    if fmt == "CSV":
+        data = df.to_csv(sep=";", index=False).encode("utf-8")
+        mime = "text/csv"
+        ext = "csv"
+    else:
+        buf = io.BytesIO()
+        df.to_parquet(buf, index=False)
+        data = buf.getvalue()
+        mime = "application/octet-stream"
+        ext = "parquet"
+
+    st.download_button(
+        label=f"Télécharger ({ext.upper()})",
+        data=data,
+        file_name=f"{filename}.{ext}",
+        mime=mime,
+    )

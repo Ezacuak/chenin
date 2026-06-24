@@ -1,9 +1,9 @@
 import math
 import re
+from io import BufferedReader
 
 import pandas as pd
-
-from report import Report
+from g2k_parser import Report
 
 from .config import SynthesisConfig
 from .measurement import Measurement
@@ -20,9 +20,9 @@ class SynthesisBuilder:
         self._providers = {col.key: build_provider(col) for col in config.columns}
 
     @classmethod
-    def from_toml(cls, path: str) -> "SynthesisBuilder":
+    def from_toml(cls, file: str | BufferedReader) -> "SynthesisBuilder":
         """Create a builder from a TOML configuration file."""
-        return cls(SynthesisConfig.from_toml(path))
+        return cls(SynthesisConfig.from_toml(file))
 
     def build(self, reports: list[Report]) -> pd.DataFrame:
         """Build the synthesis: one row per report, in the given order."""
@@ -39,7 +39,7 @@ class SynthesisBuilder:
         epaisseur = meta.epaisseur
 
         row: dict = {
-            "Numero Echantillon": _numero(report),
+            "Numero Echantillon": numero(report),
             "Profondeur": depth,
             "Epaisseur": epaisseur,
         }
@@ -64,7 +64,7 @@ class SynthesisBuilder:
         return row, next_depth
 
 
-def _numero(report: Report):
+def numero(report: Report):
     """Sample number from the report filename (last integer), else the filename stem."""
     stem = report.filepath.rsplit("/", 1)[-1].rsplit(".", 1)[0]
     match = _NUMERO_RE.search(stem)
