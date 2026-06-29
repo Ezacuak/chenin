@@ -3,10 +3,12 @@ import io
 import pandas as pd
 import streamlit as st
 
-_FORMATS = ["CSV", "Parquet"]
+from serac import export_serac
+
+_FORMATS = ["CSV", "Parquet", "SERAC"]
 
 
-def export_widget(df: pd.DataFrame, filename: str = "export") -> None:
+def _export_widget(df: pd.DataFrame, filename: str = "export") -> None:
     fmt = st.segmented_control(
         "Format d'export", _FORMATS, default="CSV", key=f"export_fmt_{filename}"
     )
@@ -15,6 +17,11 @@ def export_widget(df: pd.DataFrame, filename: str = "export") -> None:
         data = df.to_csv(sep=";", index=False, float_format="%.6f").encode("utf-8")
         mime = "text/csv"
         ext = "csv"
+    elif fmt == "SERAC":
+        # NOTE: Avec une condition suplementaire pour proposer cette option uniquement pour la synthese
+        data = export_serac(df)
+        mime = "R/Serac"
+        ext = "serac"
     else:
         buf = io.BytesIO()
         df.to_parquet(buf, index=False)
@@ -28,3 +35,8 @@ def export_widget(df: pd.DataFrame, filename: str = "export") -> None:
         file_name=f"{filename}.{ext}",
         mime=mime,
     )
+
+
+def export_dataframe(df: pd.DataFrame, filename: str = "export") -> None:
+    with st.popover("Exporter", icon=":material/download:", width="content"):
+        _export_widget(df, filename)

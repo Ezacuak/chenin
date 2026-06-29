@@ -1,7 +1,7 @@
 import state
 import streamlit as st
+from components.export import export_dataframe
 
-from components.export import export_widget
 from synthesis import SynthesisBuilder
 
 st.title("Synthèse")
@@ -45,11 +45,12 @@ if st.button("Générer la synthèse", type="primary"):
 
 # ------------------------------ Affichage de la synthese ------------------------------#
 
-df = state.get_synthesis()
-if df is None:
-    st.info("Cliquez sur « Générer » pour construire la synthèse.")
-    st.stop()
+with st.container(border=True):
+    df = state.get_synthesis()
+    if df is None:
+        st.info("Cliquez sur « Générer » pour construire la synthèse.")
+        st.stop()
 
-st.dataframe(df)
+    st.dataframe(df)
 
-export_widget(df, filename="synthese")
+    export_dataframe(df, filename="synthese")
