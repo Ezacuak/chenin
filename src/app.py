@@ -15,6 +15,7 @@ pages = {
     "Outils": [
         st.Page("ui/pages/report.py", title="Extracteur de rapport"),
         st.Page("ui/pages/synthesis.py", title="Constructeur de synthese"),
+        st.Page("ui/pages/carotte.py", title="Carotte"),
     ]
 }
 

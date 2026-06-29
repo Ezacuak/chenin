@@ -1,6 +1,6 @@
 import state
 import streamlit as st
-from components.export import export_widget
+from components.export import export_dataframe
 from streamlit_pivot import st_pivot_table
 
 from g2k_parser import SECTION_DESCRIPTIONS
@@ -64,7 +64,4 @@ for tab, (name, report) in zip(tabs, reports.items()):
                 else:
                     st.dataframe(df, hide_index=True)
 
-                with st.popover(
-                    "Exporter", icon=":material/download:", width="content"
-                ):
-                    export_widget(df, filename=f"{name}-{key}")
+                export_dataframe(df, filename=f"{name}-{key}")

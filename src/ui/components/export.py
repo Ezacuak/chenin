@@ -6,7 +6,7 @@ import streamlit as st
 _FORMATS = ["CSV", "Parquet"]
 
 
-def export_widget(df: pd.DataFrame, filename: str = "export") -> None:
+def _export_widget(df: pd.DataFrame, filename: str = "export") -> None:
     fmt = st.segmented_control(
         "Format d'export", _FORMATS, default="CSV", key=f"export_fmt_{filename}"
     )
@@ -28,3 +28,8 @@ def export_widget(df: pd.DataFrame, filename: str = "export") -> None:
         file_name=f"{filename}.{ext}",
         mime=mime,
     )
+
+
+def export_dataframe(df: pd.DataFrame, filename: str = "export") -> None:
+    with st.popover("Exporter", icon=":material/download:", width="content"):
+        _export_widget(df, filename)
