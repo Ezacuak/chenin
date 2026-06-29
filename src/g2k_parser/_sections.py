@@ -279,7 +279,7 @@ def extract_s6_data(content, header):
             C.S6_LIMITE_BASSE: "float64",
             C.S6_LIMITE_HAUTE: "float64",
             C.S6_MOYENNE_ACTIVITE: "float64",
-            C.S6_PONDEREE_INCERT: "float64",
+            C.S6_INCERT_PONDEREE: "float64",
             C.S6_MEILLEURE_ACTIVITE: "float64",
             C.S6_ESTIMATION_INCERT: "float64",
         }

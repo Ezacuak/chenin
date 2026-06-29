@@ -30,3 +30,6 @@ data/**/*.toml
 .agents/
 CLAUDE.md
 AGENTS.md
+
+# Git stuff
+commit_message.md
