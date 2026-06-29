@@ -18,6 +18,7 @@ def _export_widget(df: pd.DataFrame, filename: str = "export") -> None:
         mime = "text/csv"
         ext = "csv"
     elif fmt == "SERAC":
+        # NOTE: Avec une condition suplementaire pour proposer cette option uniquement pour la synthese
         data = export_serac(df)
         mime = "R/Serac"
         ext = "serac"
