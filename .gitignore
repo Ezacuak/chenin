@@ -16,7 +16,7 @@ wheels/
 
 out/
 test/
-note.txt
+note.md
 
 data/
 data/**/*.csv
