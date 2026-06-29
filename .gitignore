@@ -16,7 +16,7 @@ wheels/
 
 out/
 test/
-note.txt
+note.md
 
 data/
 data/**/*.csv
@@ -30,3 +30,6 @@ data/**/*.toml
 .agents/
 CLAUDE.md
 AGENTS.md
+
+# Git stuff
+commit_message.md

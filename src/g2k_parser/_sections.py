@@ -3,9 +3,15 @@ import re
 import numpy as np
 import pandas as pd
 
+from . import columns as C
+
 ###################################################
 #                      Regex                      #
 ###################################################
+
+# Header patterns are no longer used to *derive* column names (those live in
+# `columns`). They are kept as layout validators: if a report no longer matches,
+# `_require` fails loudly instead of silently mis-aligning the DataFrame.
 
 S1_KV_PATTERN = re.compile(r"^([^:]*):(.*)$", re.MULTILINE)
 S2_HEADER_PATTERN = re.compile(
@@ -48,12 +54,23 @@ S5_DATA_PATTERN = re.compile(
     r"^\s*(\+?)\s*(\??)\s*(>?)\s*([A-Z]{1,2}-\d{1,3})?\s+(\d+\.\d+)(\*?)\s*(@?)\s+(\d+\.\d+)\s+([+\-]?\d+(?:\.\d+)?(?:E[+\-]?\d+)?|Non\sCalc)(?:\s*([+\-]?\d+(?:\.\d+)?(?:E[+\-]?\d+)?))?\s+([+\-]?\d+(?:\.\d+)?(?:E[+\-]?\d+)?)\s+([+\-]?\d+(?:\.\d+)?(?:E[+\-]?\d+)?)$",
     re.MULTILINE,
 )
-S6_HEADER_PATTERN = re.compile(r"^\s+(.*)$\n^\s+(.*)$", re.MULTILINE)
-S6_WORD_COLUMN_PATTERN = re.compile(r"([A-Za-zÀ-ÿ]+\.?)")
 S6_NUCLEIDE_LINE_PATTERN = re.compile(
     r"^[+>?]\s+([A-Z]{1,2}-\d{1,3})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)",
     re.MULTILINE,
 )
+
+
+def _require(pattern, content, section):
+    """Validate that `content` still matches the expected layout for `section`.
+
+    Column names are defined statically in :mod:`columns`; this guard fails
+    loudly on a changed report format instead of producing a misaligned frame.
+    """
+    if not pattern.search(content):
+        raise ValueError(
+            f"Format de rapport inattendu pour la section {section} : "
+            "motif d'en-tete introuvable."
+        )
 
 
 ###################################################
@@ -76,26 +93,9 @@ def extract_s1(content):
 # Section 2 #
 #############
 def extract_s2_header(content):
-    """extract header  of section 2"""
-    match = re.search(S2_HEADER_PATTERN, content)
-
-    if not match:
-        return None
-
-    columns = [
-        "Marker",
-        f"{match.group(1)} {match.group(10)}",
-        f"{match.group(2)} {match.group(11)}",
-        f"{match.group(3)} {match.group(11)}",
-        match.group(4),
-        f"{match.group(5)} {match.group(12)}",
-        f"{match.group(6)} {match.group(13)}",
-        match.group(7),
-        match.group(8),
-        f"{match.group(9)} {match.group(14)}",
-    ]
-
-    return columns
+    """validate section 2 layout and return its column names"""
+    _require(S2_HEADER_PATTERN, content, "s2")
+    return C.S2_COLS
 
 
 def extract_s2_data(content, header):
@@ -103,19 +103,19 @@ def extract_s2_data(content, header):
     matches = re.findall(S2_DATA_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
 
-    df["Marker"] = df["Marker"].replace("", np.nan)
-    df = df.astype({"Marker": "category"})
+    df[C.MARKER] = df[C.MARKER].replace("", np.nan)
+    df = df.astype({C.MARKER: "category"})
     df = df.astype(
         {
-            "Numéro du pic": "int64",
-            "Début (canaux)": "int64",
-            "Fin (canaux)": "int64",
-            "Centroïde": "float64",
-            "Energie (keV)": "float64",
-            "FWHM (keV)": "float64",
-            "Surface": "float64",
-            "Incert.": "float64",
-            "Fond sous le pic": "float64",
+            C.S2_NUMERO: "int64",
+            C.S2_DEBUT: "int64",
+            C.S2_FIN: "int64",
+            C.S2_CENTROIDE: "float64",
+            C.ENERGIE_KEV: "float64",
+            C.S2_FWHM: "float64",
+            C.S2_SURFACE: "float64",
+            C.INCERT: "float64",
+            C.S2_FOND: "float64",
         }
     )
 
@@ -126,41 +126,34 @@ def extract_s2_data(content, header):
 # Section 3 #
 #############
 def extract_s3_header(content):
-    """extract header of section 3"""
-    matches = re.search(S3_HEADER_PATTERN, content)
-    if not matches:
-        return None
-    return [
-        f"{matches.group(1)} {matches.group(7)}",
-        f"{matches.group(2)} {matches.group(8)}",
-        f"{matches.group(3)} {matches.group(9)}",
-        "Marker *",
-        "Marker @",
-        f"{matches.group(4)} {matches.group(10)}",
-        f"{matches.group(5)} {matches.group(11)}",
-        f"{matches.group(6)} {matches.group(12)}",
-    ]
+    """validate section 3 layout and return its column names"""
+    _require(S3_HEADER_PATTERN, content, "s3")
+    return C.S3_COLS
 
 
 def extract_s3_data(content, header):
     """extract data of section 3"""
     matches = re.findall(S3_DATA_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
-    df["Nom du nucléide"] = df["Nom du nucléide"].replace("", np.nan)
-    df["Indice de confiance"] = df["Indice de confiance"].replace("", np.nan)
-    df["Activité (mBq/g   )"] = df["Activité (mBq/g   )"].replace("", np.nan)
-    df["Incert. (mBq/g   )"] = df["Incert. (mBq/g   )"].replace("", np.nan)
+
+    df[C.NUCLEIDE] = df[C.NUCLEIDE].replace("", np.nan)
+    df[C.INDICE_CONFIANCE] = df[C.INDICE_CONFIANCE].replace("", np.nan)
+    df[C.INCERT_MBQ] = df[C.INCERT_MBQ].replace("", np.nan)
+    df[C.ACTIVITE_MBQ] = df[C.ACTIVITE_MBQ].replace("", np.nan)
+
+    df = df.astype({C.NUCLEIDE: "category"})
     df = df.astype(
         {
-            "Indice de confiance": "float64",
-            "Activité (mBq/g   )": "float64",
-            "Incert. (mBq/g   )": "float64",
+            C.INDICE_CONFIANCE: "float64",
+            C.ENERGIE_KEV: "float64",
+            C.ACTIVITE_MBQ: "float64",
+            C.INCERT_MBQ: "float64",
         }
     )
-    df = df.fillna({"Nom du nucléide": df["Nom du nucléide"].ffill()})
-    df = df.astype(
-        {"Nom du nucléide": "category", "Marker *": "bool", "Marker @": "bool"}
-    )
+
+    df = df.astype({C.S3_MARKER_STAR: "bool", C.S3_MARKER_AT: "bool"})
+    df = df.fillna({C.NUCLEIDE: df[C.NUCLEIDE].ffill()})
+
     return df
 
 
@@ -168,51 +161,30 @@ def extract_s3_data(content, header):
 # Section 4 #
 #############
 def extract_s4_nucleides_header(content):
-    """extract header (nucleide part) of section 4"""
-    matches = re.search(S4_HEADER_1_PATTERN, content)
-    if not matches:
-        return None
-    return [
-        "Marker (X)",
-        f"{matches.group(1)} {matches.group(5)}",
-        "Marker (@)",
-        f"{matches.group(2)} {matches.group(6)}",
-        f"{matches.group(3)} {matches.group(7)} {matches.group(8)}",
-        f"{matches.group(4)} {matches.group(9)}",
-    ]
+    """validate section 4 (nucleide part) layout and return its column names"""
+    _require(S4_HEADER_1_PATTERN, content, "s4_nucleides")
+    return C.S4_NUCLEIDES_COLS
 
 
 def extract_s4_pics_header(content):
-    """extract header (pic part) of section 4"""
-    matches = re.search(S4_HEADER_2_PATTERN, content)
-    if not matches:
-        return None
-    return [
-        "Marker (M/m/F)",
-        f"{matches.group(1)} {matches.group(7)}",
-        f"{matches.group(2)} {matches.group(8)}",
-        f"{matches.group(3)} {matches.group(9)}",
-        f"{matches.group(4)}",
-        f"{matches.group(5)} {matches.group(10)}",
-        f"{matches.group(6)} {matches.group(11)}",
-    ]
+    """validate section 4 (pic part) layout and return its column names"""
+    _require(S4_HEADER_2_PATTERN, content, "s4_pics")
+    return C.S4_PICS_COLS
 
 
 def extract_s4_nucleides_data(content, header):
     """extract data (nucleide part) of section 4"""
     matches = re.findall(S4_DATA_1_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
-    df = df.astype({"Marker (X)": "bool", "Marker (@)": "bool"})
-    df["Activité moyenne pondérée (mBq/g   )"] = df[
-        "Activité moyenne pondérée (mBq/g   )"
-    ].replace("", np.nan)
-    df["Incert. (mBq/g   )"] = df["Incert. (mBq/g   )"].replace("", np.nan)
+    df = df.astype({C.S4N_MARKER_X: "bool", C.S4N_MARKER_AT: "bool"})
+    df[C.S4N_ACTIVITE] = df[C.S4N_ACTIVITE].replace("", np.nan)
+    df[C.INCERT_MBQ] = df[C.INCERT_MBQ].replace("", np.nan)
     df = df.astype(
         {
-            "Indice de confiance": "float64",
-            "Activité moyenne pondérée (mBq/g   )": "float64",
-            "Incert. (mBq/g   )": "float64",
-            "Nom du nucléide": "category",
+            C.INDICE_CONFIANCE: "object",
+            C.S4N_ACTIVITE: "object",
+            C.INCERT_MBQ: "object",
+            C.NUCLEIDE: "category",
         }
     )
     return df
@@ -222,22 +194,22 @@ def extract_s4_pics_data(content, header):
     """extract data (pic part) of section 4"""
     matches = re.findall(S4_DATA_2_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
-    df["Marker (M/m/F)"] = df["Marker (M/m/F)"].replace("", np.nan)
-    df["Type du pic"] = df["Type du pic"].replace("", np.nan)
-    df["Nucléide potentiel"] = df["Nucléide potentiel"].replace("", np.nan)
+    df[C.S4P_MARKER] = df[C.S4P_MARKER].replace("", np.nan)
+    df[C.S4P_TYPE] = df[C.S4P_TYPE].replace("", np.nan)
+    df[C.S4P_NUCLEIDE] = df[C.S4P_NUCLEIDE].replace("", np.nan)
     df = df.astype(
         {
-            "Marker (M/m/F)": "category",
-            "Type du pic": "category",
-            "Nucléide potentiel": "category",
+            C.S4P_MARKER: "category",
+            C.S4P_TYPE: "category",
+            C.S4P_NUCLEIDE: "category",
         }
     )
     df = df.astype(
         {
-            "Numéro du pic": "float64",
-            "Energie (keV)": "float64",
-            "Intensité (coups/sec)": "float64",
-            "Incert.": "float64",
+            C.S4P_NUMERO: "float64",
+            C.ENERGIE_KEV: "float64",
+            C.S4P_INTENSITE: "float64",
+            C.INCERT: "float64",
         }
     )
     return df
@@ -249,55 +221,38 @@ def extract_s4_pics_data(content, header):
 
 
 def extract_s5_header(content):
-    """extract header of section 5"""
-    matches = re.search(S5_HEADER_PATTERN, content)
-    if not matches:
-        return None
-    return [
-        "Marker (+)",
-        "Marker (?)",
-        "Marker (>)",
-        f"{matches.group(1)} {matches.group(8)}",
-        f"{matches.group(2)} {matches.group(9)}",
-        "Marker (*)",
-        "Marker (@)",
-        f"{matches.group(3)} {matches.group(10)}",
-        f"{matches.group(4)} {matches.group(11)}",
-        f"{matches.group(5)} {matches.group(12)}",
-        f"{matches.group(6)} {matches.group(13)}",
-        f"{matches.group(7)} {matches.group(14)}",
-    ]
+    """validate section 5 layout and return its column names"""
+    _require(S5_HEADER_PATTERN, content, "s5")
+    return C.S5_COLS
 
 
 def extract_s5_data(content, header):
     """extract data of section 5"""
     matches = re.findall(S5_DATA_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
-    df["Nom du nucléide"] = df["Nom du nucléide"].replace("", np.nan)
-    df["LD Energie (mBq/g   )"] = df["LD Energie (mBq/g   )"].replace(
-        "Non Calc", np.nan
-    )
-    df["LD nucléide (mBq/g   )"] = df["LD nucléide (mBq/g   )"].replace("", np.nan)
+    df[C.NUCLEIDE] = df[C.NUCLEIDE].replace("", np.nan)
+    df[C.S5_LD_ENERGIE] = df[C.S5_LD_ENERGIE].replace("Non Calc", np.nan)
+    df[C.S5_LD_NUCLEIDE] = df[C.S5_LD_NUCLEIDE].replace("", np.nan)
     df = df.astype(
         {
-            "Marker (+)": "bool",
-            "Marker (?)": "bool",
-            "Marker (>)": "bool",
-            "Marker (*)": "bool",
-            "Marker (@)": "bool",
+            C.S5_MARKER_PLUS: "bool",
+            C.S5_MARKER_Q: "bool",
+            C.S5_MARKER_GT: "bool",
+            C.S5_MARKER_STAR: "bool",
+            C.S5_MARKER_AT: "bool",
         }
     )
     df = df.astype(
         {
-            "Energie (keV)": "float64",
-            "Intensité (%)": "float64",
-            "LD Energie (mBq/g   )": "float64",
-            "LD nucléide (mBq/g   )": "float64",
-            "Activité (mBq/g   )": "float64",
-            "SD Energie (mBq/g   )": "float64",
+            C.ENERGIE_KEV: "float64",
+            C.INTENSITE_PCT: "float64",
+            C.S5_LD_ENERGIE: "float64",
+            C.S5_LD_NUCLEIDE: "float64",
+            C.ACTIVITE_MBQ: "float64",
+            C.S5_SD_ENERGIE: "float64",
         }
     )
-    df = df.fillna({"Nom du nucléide": df["Nom du nucléide"].ffill()})
+    df = df.fillna({C.NUCLEIDE: df[C.NUCLEIDE].ffill()})
     return df
 
 
@@ -307,33 +262,26 @@ def extract_s5_data(content, header):
 
 
 def extract_s6_header(content):
-    """extract header of section 6"""
-    header = []
-    matches = re.findall(S6_HEADER_PATTERN, content)
-    l1 = re.findall(S6_WORD_COLUMN_PATTERN, matches[0][0])
-    l2 = re.findall(S6_WORD_COLUMN_PATTERN, matches[0][1])
-    for a, b in zip(reversed(l1), reversed(l2)):
-        header.insert(0, f"{a} {b}".strip())
-    if len(l1) > len(l2):
-        header = l1[: len(l1) - len(l2)] + header
-    return header
+    """validate section 6 layout and return its column names"""
+    _require(S6_NUCLEIDE_LINE_PATTERN, content, "s6")
+    return C.S6_COLS
 
 
 def extract_s6_data(content, header):
     """extract data of section 6"""
     matches = re.findall(S6_NUCLEIDE_LINE_PATTERN, content)
     df = pd.DataFrame(matches, columns=header)
-    df = df.astype({"Nucléide": "category"})
+    df = df.astype({C.S6_NUCLEIDE: "category"})
     df = df.astype(
         {
-            "LD": "float64",
-            "SD": "float64",
-            "Limite Basse": "float64",
-            "Limite Haute": "float64",
-            "Moyenne Activité": "float64",
-            "pondérée Incert.": "float64",
-            "Meilleure Activité": "float64",
-            "Estimation Incert.": "float64",
+            C.S6_LD: "float64",
+            C.S6_SD: "float64",
+            C.S6_LIMITE_BASSE: "float64",
+            C.S6_LIMITE_HAUTE: "float64",
+            C.S6_MOYENNE_ACTIVITE: "float64",
+            C.S6_INCERT_PONDEREE: "float64",
+            C.S6_MEILLEURE_ACTIVITE: "float64",
+            C.S6_ESTIMATION_INCERT: "float64",
         }
     )
     return df

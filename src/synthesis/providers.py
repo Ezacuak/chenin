@@ -3,13 +3,16 @@ import re
 
 import pandas as pd
 
+from g2k_parser import columns as C
+
 from .config import ColumnSpec, Peak
 from .measurement import Measurement
 
-NUCLIDE_COL = "Nom du nucleide"
-ENERGY_COL = "Energie (keV)"
-ACTIVITY_COL = "Activite (mBq/g   )"
-UNCERTAINTY_COL = "Incert. (mBq/g   )"
+# Section-3 column names — single source of truth in g2k_parser.columns.
+NUCLIDE_COL = C.NUCLEIDE
+ENERGY_COL = C.ENERGIE_KEV
+ACTIVITY_COL = C.ACTIVITE_MBQ
+UNCERTAINTY_COL = C.INCERT_MBQ
 
 # Tolerance (keV) when matching a configured peak energy to a section-3 row.
 ENERGY_TOLERANCE = 1.0

@@ -1,3 +1,4 @@
+from . import columns
 from .parser import G2KParser
 from .report import Report
 
@@ -11,4 +12,4 @@ SECTION_DESCRIPTIONS = {
     "s6": "Rapport limites de détection ISO 11929",
 }
 
-__all__ = ["G2KParser", "Report", "SECTION_DESCRIPTIONS"]
+__all__ = ["G2KParser", "Report", "SECTION_DESCRIPTIONS", "columns"]
