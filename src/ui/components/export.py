@@ -3,7 +3,9 @@ import io
 import pandas as pd
 import streamlit as st
 
-_FORMATS = ["CSV", "Parquet"]
+from serac import export_serac
+
+_FORMATS = ["CSV", "Parquet", "SERAC"]
 
 
 def _export_widget(df: pd.DataFrame, filename: str = "export") -> None:
@@ -15,6 +17,10 @@ def _export_widget(df: pd.DataFrame, filename: str = "export") -> None:
         data = df.to_csv(sep=";", index=False, float_format="%.6f").encode("utf-8")
         mime = "text/csv"
         ext = "csv"
+    elif fmt == "SERAC":
+        data = export_serac(df)
+        mime = "R/Serac"
+        ext = "serac"
     else:
         buf = io.BytesIO()
         df.to_parquet(buf, index=False)
