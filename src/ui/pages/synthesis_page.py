@@ -1,7 +1,8 @@
-import pandas as pd
 import state
 import streamlit as st
 from components.export import export_dataframe
+from streamlit_extras.dataframe_explorer import dataframe_explorer
+from streamlit_pivot import st_pivot_table
 
 from synthesis import SynthesisBuilder, SynthesisConfig
 
@@ -82,6 +83,35 @@ with st.container(border=True):
         st.info("Cliquez sur « Générer » pour construire la synthèse.")
         st.stop()
 
-    st.dataframe(df)
+    _TABLE = "Tableau"
+    _PIVOT = "Pivot"
+    _FILTERED = "Filtre"
 
-    export_dataframe(df, filename="synthese")
+    with st.container(
+        horizontal=True,
+        horizontal_alignment="distribute",
+        vertical_alignment="center",
+    ):
+        st.caption(
+            f":material/table_rows: {len(df)} lignes "
+            f"· :material/view_column: {len(df.columns)} colonnes"
+        )
+
+        view = st.segmented_control(
+            "Affichage",
+            [_TABLE, _PIVOT, _FILTERED],
+            default=_TABLE,
+            key="view_synthesis",
+            label_visibility="collapsed",
+            width="content",
+        )
+
+    if view == _PIVOT:
+        st_pivot_table(df, key="pivot_synthesis")
+    elif view == _FILTERED:
+        df = dataframe_explorer(df)
+        st.dataframe(df)
+    else:
+        st.dataframe(df, hide_index=True)
+
+    export_dataframe(df, filename="synthesis")
