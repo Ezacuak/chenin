@@ -21,7 +21,6 @@ def store_reports(files) -> None:
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
             tmp.write(file.read())
             tmp_path = tmp.name
-        print(tmp_path)
         report = Report(tmp_path)  # On stoque bien l'objet `Report`
         Path(tmp_path).unlink()
         reports[name] = report
