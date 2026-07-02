@@ -2,6 +2,7 @@ import pandas as pd
 import state
 import streamlit as st
 from components.export import export_dataframe
+from streamlit_extras.dataframe_explorer import *
 from streamlit_pivot import st_pivot_table
 
 from g2k_parser import SECTION_DESCRIPTIONS
@@ -32,6 +33,7 @@ tabs = st.tabs(list(reports.keys()))
 
 _TABLE = "Tableau"
 _PIVOT = "Pivot"
+_FILTERED = "Filtre"
 
 for tab, (name, report) in zip(tabs, reports.items()):
     with tab:
@@ -41,29 +43,32 @@ for tab, (name, report) in zip(tabs, reports.items()):
             df = report[key]
 
             with st.container(border=True):
-                head_left, head_right = st.columns(
-                    [1, 0.32], vertical_alignment="center"
-                )
+                st.markdown(f"##### {SECTION_DESCRIPTIONS[key]}")
 
-                with head_left:
-                    st.markdown(f"##### {SECTION_DESCRIPTIONS[key]}")
+                with st.container(
+                    horizontal=True,
+                    horizontal_alignment="distribute",
+                    vertical_alignment="center",
+                ):
                     st.caption(
                         f":material/table_rows: {len(df)} lignes "
                         f"· :material/view_column: {len(df.columns)} colonnes"
                     )
 
-                with head_right:
                     view = st.segmented_control(
                         "Affichage",
-                        [_TABLE, _PIVOT],
+                        [_TABLE, _PIVOT, _FILTERED],
                         default=_TABLE,
                         key=f"view_{name}_{key}",
                         label_visibility="collapsed",
-                        width="stretch",
+                        width="content",
                     )
 
                 if view == _PIVOT:
                     st_pivot_table(df, key=f"pivot_{name}_{key}")
+                elif view == _FILTERED:
+                    df = dataframe_explorer(df)
+                    st.dataframe(df)
                 else:
                     st.dataframe(df, hide_index=True)
 
