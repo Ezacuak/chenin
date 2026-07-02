@@ -15,7 +15,7 @@ class Report(Mapping):
     def __init__(self, path: str, parser: G2KParser | None = None) -> None:
         self.filepath = path
         self.id = Path(path).stem
-        self.parser = G2KParser()
+        self.parser = parser or G2KParser()
         self._data = self.parser.parse(path)
 
     def __getitem__(self, key: Any) -> Any:
