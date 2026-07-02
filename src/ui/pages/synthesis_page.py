@@ -1,8 +1,9 @@
+import pandas as pd
 import state
 import streamlit as st
 from components.export import export_dataframe
 
-from synthesis import SynthesisBuilder
+from synthesis import SynthesisBuilder, SynthesisConfig
 
 st.title("Synthèse")
 st.markdown("Construire une synthèse à partir des rapports chargés.")
@@ -29,9 +30,41 @@ if not toml_synthesis_file:
     )
     st.stop()
 
-# ----------------------------- Construction de la synthese ----------------------------#
+# ----------------------------- Affichage pre synthese ----------------------------#
 
-builder = SynthesisBuilder.from_toml(toml_synthesis_file)
+try:
+    config = SynthesisConfig.from_toml(toml_synthesis_file)
+except ValueError as e:
+    st.error(f"Configuration invalide : {e}")
+    st.stop()
+
+with st.expander(f"Configuration : {config.title}", expanded=True):
+    md_metadata = f"""
+**Metadata:** :green-badge[Année: {config.metadata.base_year}] :green-badge[Taux de sedimentation: {config.metadata.taux_sedimentation}] :green-badge[Epaisseur: {config.metadata.epaisseur}]
+"""
+    st.markdown(md_metadata)
+
+    st.markdown("**Nuclides:**")
+    for key, nuclide in config.nuclides.items():
+        peaks = ", ".join(f"{p.nuclide} @ {p.energy} keV" for p in nuclide.peaks)
+        st.text(f"{key}: {peaks}")
+
+    st.markdown("**Colonnes:**")
+
+    # preview_df = pd.DataFrame(columns=cols)
+    for column in config.columns:
+        source = (
+            f"source={column.source}"
+            if column.source is not None
+            else f"formule={column.formula}"
+        )
+        st.text(f"{column.key} ({column.name}): {source}")
+
+
+st.divider()
+
+# ----------------------------- Construction de la synthese ----------------------------#
+builder = SynthesisBuilder(config)
 
 ordered_reports = [reports[k] for k in sorted(reports)]
 
@@ -42,9 +75,7 @@ if st.button("Générer la synthèse", type="primary"):
     except Exception as e:
         st.error(f"Erreur lors de la génération : {e}")
         st.stop()
-
 # ------------------------------ Affichage de la synthese ------------------------------#
-
 with st.container(border=True):
     df = state.get_synthesis()
     if df is None:
