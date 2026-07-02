@@ -15,7 +15,7 @@ st.divider()
 
 pages = {
     "Outils": [
-        st.Page("ui/pages/report.py", title="Extracteur de rapport"),
+        st.Page("ui/pages/report_page.py", title="Extracteur de rapport"),
         st.Page("ui/pages/synthesis_page.py", title="Constructeur de synthese"),
     ]
 }
