@@ -1,8 +1,7 @@
 import tomllib
-from dataclasses import dataclass, field
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass, fields
 from io import BufferedReader
-
-PROVIDERS = ("report", "mean", "calculated")
 
 
 @dataclass(frozen=True)
@@ -14,14 +13,28 @@ class Peak:
 
 
 @dataclass(frozen=True)
+class NuclideSpec:
+    """A reusable measurement source: a nuclide read from one or more gamma lines.
+
+    The activity is the inverse-variance weighted mean over ``peaks``. Each peak must
+    carry an explicit energy (the identification line is always known).
+    """
+
+    key: str
+    peaks: list[Peak]
+
+
+@dataclass(frozen=True)
 class ColumnSpec:
-    """How to compute one element column of the synthesis."""
+    """One displayed column of the synthesis.
+
+    Exactly one of ``source`` (a nuclide key) or ``formula`` (arithmetic over nuclide
+    keys) is set.
+    """
 
     key: str
     name: str
-    provider: str
-    energy: float | None = None
-    peaks: list[Peak] = field(default_factory=list)
+    source: str | None = None
     formula: str | None = None
 
 
@@ -35,12 +48,25 @@ class MetadataSpec:
 
 
 @dataclass(frozen=True)
-class SynthesisConfig:
+class SynthesisConfig(Mapping):
     """A validated synthesis configuration."""
 
     title: str
     metadata: MetadataSpec
+    nuclides: dict[str, NuclideSpec]
     columns: list[ColumnSpec]
+
+    def __getitem__(self, key: str):
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
+
+    def __iter__(self) -> Iterator[str]:
+        return (f.name for f in fields(self))
+
+    def __len__(self) -> int:
+        return len(fields(self))
 
     @classmethod
     def from_toml(cls, file: str | BufferedReader) -> "SynthesisConfig":
@@ -54,7 +80,8 @@ class SynthesisConfig:
 
     @classmethod
     def from_dict(cls, raw: dict) -> "SynthesisConfig":
-        """Build and validate a configuration from a parsed mapping."""
+
+        # --------------------- MetaData  --------------------- #
         meta_raw = raw.get("metadata", {})
         metadata = MetadataSpec(
             base_year=meta_raw.get("base_year"),
@@ -62,49 +89,70 @@ class SynthesisConfig:
             epaisseur=meta_raw.get("epaisseur"),
         )
 
+        # --------------------- Nucleides --------------------- #
+        nuclides_raw = raw.get("nuclides", {})
+        if not nuclides_raw:
+            raise ValueError("config has no [nuclides.*] entries")
+        nuclides = {
+            key: _parse_nuclide(key, spec) for key, spec in nuclides_raw.items()
+        }
+
+        # --------------------- Columnes --------------------- #
         columns_raw = raw.get("columns", {})
         if not columns_raw:
             raise ValueError("config has no [columns.*] entries")
-
-        columns = [_parse_column(key, spec) for key, spec in columns_raw.items()]
+        columns = [
+            _parse_column(key, spec, nuclides) for key, spec in columns_raw.items()
+        ]
 
         return cls(
             title=raw.get("title", "Synthese"),
             metadata=metadata,
+            nuclides=nuclides,
             columns=columns,
         )
 
 
-def _parse_column(key: str, spec: dict) -> ColumnSpec:
+def _require_identifier(kind: str, key: str) -> None:
+    """A nuclide/column key must be a valid identifier so formulas can reference it."""
+    if not key.isidentifier():
+        raise ValueError(f"{kind} key '{key}' is not a valid identifier")
+
+
+def _parse_nuclide(key: str, spec: dict) -> NuclideSpec:
+    """Validate and build a single NuclideSpec, raising clear errors."""
+    _require_identifier("nuclide", key)
+
+    peaks_raw = spec.get("peaks")
+    if not peaks_raw:
+        raise ValueError(f"nuclide '{key}' needs a non-empty 'peaks'")
+
+    peaks = []
+    for p in peaks_raw:
+        if "nuclide" not in p:
+            raise ValueError(f"nuclide '{key}' has a peak missing 'nuclide'")
+        if "energy" not in p:
+            raise ValueError(f"nuclide '{key}' has a peak missing 'energy'")
+        peaks.append(Peak(nuclide=p["nuclide"], energy=float(p["energy"])))
+
+    return NuclideSpec(key=key, peaks=peaks)
+
+
+def _parse_column(key: str, spec: dict, nuclides: dict[str, NuclideSpec]) -> ColumnSpec:
     """Validate and build a single ColumnSpec, raising clear errors."""
+    _require_identifier("column", key)
+
     name = spec.get("name")
     if not name:
         raise ValueError(f"column '{key}' is missing a 'name'")
 
-    provider = spec.get("provider", "report")
-    if provider not in PROVIDERS:
-        raise ValueError(
-            f"column '{key}' has invalid provider '{provider}' "
-            f"(expected one of {', '.join(PROVIDERS)})"
-        )
-
-    peaks = [
-        Peak(nuclide=p["nuclide"], energy=float(p["energy"]))
-        for p in spec.get("peaks", [])
-    ]
+    source = spec.get("source")
     formula = spec.get("formula")
+    if (source is None) == (formula is None):
+        raise ValueError(
+            f"column '{key}' must have exactly one of 'source' or 'formula'"
+        )
+    if source is not None and source not in nuclides:
+        raise ValueError(f"column '{key}' references unknown nuclide '{source}'")
 
-    if provider == "mean" and not peaks:
-        raise ValueError(f"column '{key}' (provider 'mean') needs a non-empty 'peaks'")
-    if provider == "calculated" and not formula:
-        raise ValueError(f"column '{key}' (provider 'calculated') needs a 'formula'")
-
-    energy = spec.get("energy")
-    return ColumnSpec(
-        key=key,
-        name=name,
-        provider=provider,
-        energy=float(energy) if energy is not None else None,
-        peaks=peaks,
-        formula=formula,
-    )
+    return ColumnSpec(key=key, name=name, source=source, formula=formula)

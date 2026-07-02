@@ -3,11 +3,12 @@ import re
 from io import BufferedReader
 
 import pandas as pd
+
 from g2k_parser import Report
 
 from .config import SynthesisConfig
 from .measurement import Measurement
-from .providers import build_provider
+from .providers import evaluate_formula, resolve_nuclide
 
 _NUMERO_RE = re.compile(r"(\d+)(?!.*\d)")  # last integer in a string
 
@@ -17,7 +18,6 @@ class SynthesisBuilder:
 
     def __init__(self, config: SynthesisConfig):
         self.config = config
-        self._providers = {col.key: build_provider(col) for col in config.columns}
 
     @classmethod
     def from_toml(cls, file: str | BufferedReader) -> "SynthesisBuilder":
@@ -44,17 +44,17 @@ class SynthesisBuilder:
             "Epaisseur": epaisseur,
         }
 
-        # Resolve report/mean columns first, then calculated ones (which depend on them).
-        resolved: dict[str, Measurement] = {}
-        for col in self.config.columns:
-            if col.provider != "calculated":
-                resolved[col.name] = self._providers[col.key].resolve(section, resolved)
-        for col in self.config.columns:
-            if col.provider == "calculated":
-                resolved[col.name] = self._providers[col.key].resolve(section, resolved)
+        # Resolve every nuclide source once; columns then read a source or a formula.
+        nuclides: dict[str, Measurement] = {
+            key: resolve_nuclide(section, spec)
+            for key, spec in self.config.nuclides.items()
+        }
 
         for col in self.config.columns:
-            m = resolved[col.name]
+            if col.source is not None:
+                m = nuclides[col.source]
+            else:
+                m = evaluate_formula(col.formula, nuclides)
             row[f"Activite {col.name}"] = m.value
             row[f"Incertitude {col.name}"] = m.uncertainty
 
