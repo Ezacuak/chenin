@@ -3,6 +3,8 @@ from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, fields
 from io import BufferedReader
 
+from streamlit.runtime.uploaded_file_manager import UploadedFile
+
 
 @dataclass(frozen=True)
 class Peak:
@@ -69,7 +71,7 @@ class SynthesisConfig(Mapping):
         return len(fields(self))
 
     @classmethod
-    def from_toml(cls, file: str | BufferedReader) -> "SynthesisConfig":
+    def from_toml(cls, file: str | BufferedReader | UploadedFile) -> "SynthesisConfig":
         """Load and validate a configuration from a TOML file path or binary file-like object."""
         if isinstance(file, str):
             with open(file, "rb") as f:
