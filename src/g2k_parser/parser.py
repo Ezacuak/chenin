@@ -31,13 +31,12 @@ class G2KParser:
 
         Then extract header and data from each section to a dictionary of Pandas DataFrame.
         """
-        content = ""
 
         try:
             with open(path) as f:
                 content = f.read()
-        except OSError as e:
-            print(f"Error while opening the file: {e}")
+        except OSError:
+            raise
 
         titles, sections = split_sections(content)
 
