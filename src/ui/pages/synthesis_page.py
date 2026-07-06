@@ -18,6 +18,7 @@ with st.sidebar:
         accept_multiple_files=False,
     )
 
+# NOTE: Recuperation des rapports stocker dans le cache
 reports = state.get_reports()
 
 if not reports:
@@ -42,16 +43,16 @@ except ValueError as e:
 
 with st.expander(f"Configuration : {config.title}", expanded=True):
     md_metadata = f"""
-**Metadata:** :green-badge[Année: {config.metadata.base_year}] :green-badge[Taux de sedimentation: {config.metadata.taux_sedimentation}] :green-badge[Epaisseur: {config.metadata.epaisseur}]
-"""
+    **Metadata:** :green-badge[Année: {config.metadata.base_year}] :green-badge[Taux de sedimentation: {config.metadata.taux_sedimentation}] :green-badge[Epaisseur: {config.metadata.epaisseur}]
+    """
     st.markdown(md_metadata)
 
     st.markdown("**Nuclides:**")
     for key, nuclide in config.nuclides.items():
         peaks = ", ".join(
-            f"{format_nuclide(p.nuclide)} @ {p.energy} keV" for p in nuclide.peaks
+            f"`{format_nuclide(p.nuclide)}` @ {p.energy} keV" for p in nuclide.peaks
         )
-        st.text(f"{peaks}")
+        st.markdown(peaks)
 
     st.markdown("**Colonnes:**")
 
@@ -62,7 +63,7 @@ with st.expander(f"Configuration : {config.title}", expanded=True):
             if column.source is not None
             else f"formule={column.formula}"
         )
-        st.text(f"{column.key} ({column.name}): {source}")
+        st.markdown(f"`{column.name}`: {source}")
 
 
 st.divider()
@@ -70,7 +71,12 @@ st.divider()
 # ----------------------------- Construction de la synthese ----------------------------#
 builder = SynthesisBuilder(config)
 
+# NOTE: Sur quel criter il trie les rapports ?
 ordered_reports = [reports[k] for k in sorted(reports)]
+
+for k in ordered_reports:
+    print(k.name)
+
 
 if st.button("Générer la synthèse", type="primary"):
     try:
