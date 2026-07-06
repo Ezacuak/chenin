@@ -4,6 +4,7 @@ from components.export import export_dataframe
 from streamlit_extras.dataframe_explorer import dataframe_explorer
 from streamlit_pivot import st_pivot_table
 
+from g2k_parser import format_nuclide
 from synthesis import SynthesisBuilder, SynthesisConfig
 
 st.title("Synthèse")
@@ -47,8 +48,10 @@ with st.expander(f"Configuration : {config.title}", expanded=True):
 
     st.markdown("**Nuclides:**")
     for key, nuclide in config.nuclides.items():
-        peaks = ", ".join(f"{p.nuclide} @ {p.energy} keV" for p in nuclide.peaks)
-        st.text(f"{key}: {peaks}")
+        peaks = ", ".join(
+            f"{format_nuclide(p.nuclide)} @ {p.energy} keV" for p in nuclide.peaks
+        )
+        st.text(f"{peaks}")
 
     st.markdown("**Colonnes:**")
 
