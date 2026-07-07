@@ -39,7 +39,6 @@ class SynthesisBuilder:
         epaisseur = meta.epaisseur
 
         row: dict = {
-            "Numero Echantillon": numero(report),
             "Profondeur": depth,
             "Epaisseur": epaisseur,
         }
@@ -62,13 +61,6 @@ class SynthesisBuilder:
 
         next_depth = depth + epaisseur if epaisseur is not None else depth
         return row, next_depth
-
-
-def numero(report: Report):
-    """Sample number from the report filename (last integer), else the filename stem."""
-    stem = report.filepath.rsplit("/", 1)[-1].rsplit(".", 1)[0]
-    match = _NUMERO_RE.search(stem)
-    return int(match.group(1)) if match else stem
 
 
 def _age(depth: float, base_year, taux_sedimentation) -> float:

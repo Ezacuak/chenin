@@ -1,4 +1,4 @@
-from .builder import SynthesisBuilder, numero
+from .builder import SynthesisBuilder
 from .config import MetadataSpec, NuclideSpec, SynthesisConfig
 from .measurement import Measurement
 
@@ -8,5 +8,4 @@ __all__ = [
     "MetadataSpec",
     "NuclideSpec",
     "Measurement",
-    "numero",
 ]
