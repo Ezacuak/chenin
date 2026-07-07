@@ -16,6 +16,7 @@ base_path = "./data/NOI_S"
 name = "NOI_S_1.txt"
 depth_top = 0.0
 depth_bot = 0.5
+# densiter: DBD
 
 [[samples]]
 name = "NOI_S_2.txt"
@@ -80,8 +81,12 @@ depth_bot = 6.5
 # --- Métadonnées (niveau carotte) --- #
 
 [metadata]
-base_year = 2018             # année de l'échantillon de surface (calcul d'âge)
-taux_sedimentation = 0.2246  # cm/an, constante fournie (dérivée extérieurement pour l'instant)
+# Obselete !!
+# base_year = 2018
+# taux_sedimentation = 0.2246
+
+
+coring_yr = 2026 # Mettre une date
 
 # --- Nucléides : sources de mesure réutilisables (toujours des raies avec énergie) --- #
 
@@ -129,3 +134,5 @@ source = "cs137"
 [columns.k40]
 name = "K-40"
 source = "k40"
+
+# Plus incertitude par nuclide
