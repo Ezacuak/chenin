@@ -1,15 +1,25 @@
-# Synthèse — module `synthesis`
+# Fichier build & synthèse — module `synthesis`
 
 Le module `src/synthesis/` construit une **synthèse** à partir de plusieurs rapports Génie 2000 :
-un `DataFrame` avec **une ligne par rapport** et, pour chaque nucléide configuré, une colonne
-d'activité et une colonne d'incertitude. La construction est pilotée par un **fichier de
-configuration TOML** : le code décide *comment* lire les données, le TOML décide *quoi* extraire.
+un `DataFrame` avec **une ligne par échantillon** et, pour chaque nucléide configuré, une colonne
+d'activité et une colonne d'incertitude.
+
+Tout est piloté par un **unique fichier build TOML** qui référence à la fois :
+
+1. la **liste ordonnée des échantillons** — chaque rapport avec sa géométrie de couche
+   (`depth_top`, `depth_bot`), *données absentes des rapports G2K eux-mêmes* ;
+2. le **format de synthèse** — nucléides et colonnes.
+
+Le code décide *comment* lire les données ; le fichier build décide *quoi* extraire et *sur quels
+échantillons*.
 
 ## Sommaire
 
 - [Principe](#principe)
-- [Format de configuration TOML](#format-de-configuration-toml)
-  - [`title` et `metadata`](#title-et-metadata)
+- [Format du fichier build TOML](#format-du-fichier-build-toml)
+  - [En-tête et `base_path`](#en-tête-et-base_path)
+  - [`[[samples]]` — échantillons](#samples--échantillons)
+  - [`[metadata]`](#metadata)
   - [`[nuclides.*]` — sources de mesure](#nuclides--sources-de-mesure)
   - [`[columns.*]` — colonnes affichées](#columns--colonnes-affichées)
   - [Formules](#formules)
@@ -21,38 +31,52 @@ configuration TOML** : le code décide *comment* lire les données, le TOML déc
 
 ## Principe
 
-La synthèse se construit en deux niveaux, volontairement séparés :
+La synthèse se construit en niveaux, volontairement séparés :
 
-1. **Les nucléides** (`[nuclides.*]`) décrivent *comment lire une activité* depuis la section 3
-   d'un rapport : un nucléide est une ou plusieurs **raies gamma** (nucléide + énergie). Quand il y
-   a plusieurs raies, l'activité est leur **moyenne pondérée inverse-variance**. Un nucléide est
+1. **Les échantillons** (`[[samples]]`) lient chaque **fichier rapport** à sa **profondeur**
+   (`depth_top`/`depth_bot`, en cm). Ils sont chargés dans l'ordre du fichier.
+
+2. **Les nucléides** (`[nuclides.*]`) décrivent *comment lire une activité* depuis la section 3
+   d'un rapport : un nucléide est une ou plusieurs **raies gamma** (nucléide + énergie). Avec
+   plusieurs raies, l'activité est leur **moyenne pondérée inverse-variance**. Un nucléide est
    défini **une fois** puis réutilisable par plusieurs colonnes ou formules.
 
-2. **Les colonnes** (`[columns.*]`) décrivent *ce qui est affiché*, dans l'ordre du fichier. Une
+3. **Les colonnes** (`[columns.*]`) décrivent *ce qui est affiché*, dans l'ordre du fichier. Une
    colonne lit soit directement une source de nucléide (`source`), soit le résultat d'une
    **formule arithmétique** sur d'autres nucléides (`formula`).
 
 ```
-rapports G2K ──▶ section 3 ──▶ [nuclides.*] ──▶ [columns.*] ──▶ DataFrame
-                  (raies)      (mesures)        (affichage)
+fichier build ──▶ [[samples]] ──▶ rapports G2K ──▶ section 3 ──▶ [nuclides.*] ──▶ [columns.*] ──▶ DataFrame
+                  (+ profondeurs)                   (raies)       (mesures)        (affichage)
 ```
 
-## Format de configuration TOML
+## Format du fichier build TOML
 
-Exemple complet (`data/NOI_S/synthesis.toml`) :
+Exemple (racine `NOI_S_Builder.toml`) :
 
 ```toml
 title = "Synthèse NOI_S"
+description = "Rapports G2K (échantillons + profondeurs) et format de synthèse"
 version = 1.0
-author = "Antonin Plard"
+base_path = "./data/NOI_S"
 
+# --- Échantillons : liste ORDONNÉE, avec la géométrie de couche (cm) --- #
+[[samples]]
+name = "NOI_S_1.txt"
+depth_top = 0.0
+depth_bot = 0.5
+
+[[samples]]
+name = "NOI_S_2.txt"
+depth_top = 0.5
+depth_bot = 1.0
+
+# --- Métadonnées (niveau carotte) --- #
 [metadata]
 base_year = 2018             # année de l'échantillon de surface (calcul de l'âge)
 taux_sedimentation = 0.2246  # cm/an (constante fournie, dérivée en externe pour l'instant)
-epaisseur = 0.5              # épaisseur de tranche (cm) ; la profondeur cumule cette valeur
 
 # --- Nucléides : sources de mesure réutilisables (toujours des raies avec énergie) --- #
-
 [nuclides.pb210]
 peaks = [{ nuclide = "PB-210", energy = 46.54 }]
 
@@ -63,53 +87,46 @@ peaks = [
   { nuclide = "BI-214", energy = 609.31 },
 ]
 
-[nuclides.am241]
-peaks = [{ nuclide = "AM-241", energy = 59.54 }]
-
-[nuclides.cs137]
-peaks = [{ nuclide = "CS-137", energy = 661.66 }]  # la vraie raie, pas la ligne à 32 keV
-
-[nuclides.k40]
-peaks = [{ nuclide = "K-40", energy = 1460.82 }]
-
 # --- Colonnes : ce qui est affiché, dans l'ordre du fichier --- #
-
 [columns.pb210]
 name = "PB-210"
 source = "pb210"
 
-[columns.ra226]
-name = "RA-226"
-source = "ra226"
-
 [columns.pbexc]
 name = "PB-Exc"
 formula = "pb210 - ra226"       # arithmétique sur les clés de nucléide
-
-[columns.am241]
-name = "AM-241"
-source = "am241"
-
-[columns.cs137]
-name = "CS-137"
-source = "cs137"
-
-[columns.k40]
-name = "K-40"
-source = "k40"
 ```
 
-### `title` et `metadata`
+### En-tête et `base_path`
 
 | Clé | Type | Rôle |
 |---|---|---|
 | `title` | str | Titre de la synthèse (par défaut `"Synthese"`). |
+| `base_path` | str | Dossier des rapports. Résolu **relativement au fichier build** (CLI) ou au **dossier de travail du serveur** (Streamlit). |
+
+Les clés top-level inconnues (`version`, `author`, `description`, …) sont **ignorées** sans erreur.
+
+### `[[samples]]` — échantillons
+
+Tableau ordonné (`array-of-tables`). Chaque entrée lie un rapport à sa couche :
+
+| Champ | Type | Rôle |
+|---|---|---|
+| `name` | str | Nom du fichier rapport, résolu sous `base_path`. |
+| `depth_top` | float | Profondeur du sommet de la couche (cm). |
+| `depth_bot` | float | Profondeur du fond de la couche (cm), `>= depth_top`. |
+
+`samples` peut être vide (le fichier reste un « format seul » valide, utile pour tester une config).
+
+### `[metadata]`
+
+| Clé | Type | Rôle |
+|---|---|---|
 | `metadata.base_year` | float | Année de l'échantillon de surface, base du calcul d'âge. |
 | `metadata.taux_sedimentation` | float | Taux de sédimentation (cm/an). |
-| `metadata.epaisseur` | float | Épaisseur de tranche (cm) ; la profondeur cumule cette valeur ligne après ligne. |
 
-Les clés top-level inconnues (`version`, `author`, …) sont **ignorées** sans erreur ; on peut s'en
-servir pour documenter le fichier.
+> L'épaisseur n'est **plus** une métadonnée globale : elle est dérivée par échantillon
+> (`depth_bot − depth_top`).
 
 ### `[nuclides.*]` — sources de mesure
 
@@ -134,9 +151,6 @@ peaks = [
 - Les raies peuvent appartenir à des nucléides **différents** : c'est le cas de `RA-226`, non
   mesurable directement, estimé via ses filles (`PB-214`, `BI-214`) à l'équilibre séculaire.
 
-> **Note** : l'énergie est toujours obligatoire. Il n'existe pas de mode « lire toutes les raies du
-> nucléide » — chaque raie d'identification doit être explicitement nommée.
-
 La raie est appariée à la ligne de section 3 dont l'énergie est la **plus proche**, dans une
 **tolérance de 1 keV** (`ENERGY_TOLERANCE` dans `providers.py`). Au-delà, ou si l'activité est
 absente, la mesure est **manquante** (`NaN`).
@@ -145,12 +159,6 @@ absente, la mesure est **manquante** (`NaN`).
 
 Chaque table `[columns.<clé>]` produit une colonne de la synthèse, **dans l'ordre du fichier**. La
 `<clé>` doit aussi être un identifiant valide.
-
-```toml
-[columns.pb210]
-name = "PB-210"      # nom d'affichage, sert d'en-tête de colonne
-source = "pb210"     # référence une clé de [nuclides.*]
-```
 
 Une colonne porte **exactement un** des deux champs suivants :
 
@@ -163,9 +171,6 @@ Une colonne porte **exactement un** des deux champs suivants :
 
 ### Formules
 
-Une colonne `calculated` utilise `formula`, une expression arithmétique qui référence les **clés de
-nucléide** :
-
 ```toml
 [columns.pbexc]
 name = "PB-Exc"
@@ -176,73 +181,76 @@ formula = "pb210 - ra226"
   numériques. Aucun appel de fonction, aucune autre construction (évaluation via un AST restreint).
 - Les noms référencent les **clés de `[nuclides.*]`** (ici `pb210` et `ra226`), pas les noms
   d'affichage.
-- L'incertitude est **propagée automatiquement** (voir plus bas).
+- L'incertitude est **propagée automatiquement** (voir [propagation](#propagation-dincertitude)).
 
 ## Utilisation
 
 ### En ligne de commande
 
 ```sh
-uv run src/cli.py synthesis <config.toml> <rapport1.txt> <rapport2.txt> ...
+uv run src/cli.py synthesis <build_file.toml>
 
 # Exemple sur le jeu NOI_S
-uv run src/cli.py synthesis data/NOI_S/synthesis.toml data/NOI_S/*.txt
+uv run src/cli.py synthesis NOI_S_Builder.toml
 
 # Export CSV
-uv run src/cli.py synthesis data/NOI_S/synthesis.toml data/NOI_S/*.txt -o synthese.csv
+uv run src/cli.py synthesis NOI_S_Builder.toml -o synthese.csv
 ```
+
+Les rapports viennent du fichier build (`[[samples]]` + `base_path`) — inutile de les lister.
 
 ### En Python
 
 ```python
-from g2k_parser import Report
-from synthesis import SynthesisBuilder
+from pathlib import Path
+from synthesis import BuildConfig, SynthesisBuilder, load_reports
 
-builder = SynthesisBuilder.from_toml("data/NOI_S/synthesis.toml")
-reports = [Report(p) for p in ["data/NOI_S/NOI_S_1.txt", "data/NOI_S/NOI_S_2.txt"]]
-df = builder.build(reports)   # une ligne par rapport, dans l'ordre fourni
+config = BuildConfig.from_toml("NOI_S_Builder.toml")
+reports = load_reports(config, Path("."))     # dict {name: Report}, lus sous base_path
+df = SynthesisBuilder(config).build(reports)  # une ligne par échantillon, dans l'ordre du build
 ```
 
-L'ordre des lignes suit l'ordre des rapports passés à `build()`. La **profondeur** cumule
-`metadata.epaisseur` à chaque ligne.
+### Dans Streamlit
+
+Le fichier build est importé **une seule fois** en haut de la barre latérale (`src/app.py`). Les
+pages « Extracteur » et « Synthèse » consomment ensuite l'état partagé
+(`state.get_build_config()`, `state.get_reports()`).
 
 ## Colonnes de sortie
 
-Pour chaque rapport, la ligne produite contient :
+Pour chaque échantillon, la ligne produite contient :
 
 | Colonne | Source |
 |---|---|
-| `Numero Echantillon` | Dernier entier du nom de fichier (ex. `NOI_S_13.txt` → `13`), sinon le nom. |
-| `Profondeur` | Cumul de `epaisseur` (0, 0.5, 1.0, … en cm). |
-| `Epaisseur` | `metadata.epaisseur`. |
+| `Profondeur` | `depth_top` de l'échantillon (cm). |
+| `Epaisseur` | `depth_bot − depth_top` (cm). |
 | `Activite <name>` | Valeur de chaque colonne configurée. |
 | `Incertitude <name>` | Incertitude (1 σ) de chaque colonne configurée. |
-| `Age` | `base_year - profondeur / taux_sedimentation` (`NaN` si métadonnées manquantes). |
+| `Age` | `base_year − depth_top / taux_sedimentation` (`NaN` si métadonnées manquantes). |
 
 ## Propagation d'incertitude
 
 Les calculs passent par le type `Measurement(value, uncertainty)` (1 σ), qui propage l'incertitude
-selon les règles standard :
+selon les règles standard. Voir [`measurement.md`](measurement.md) pour le détail :
 
-- **Addition / soustraction** : incertitudes sommées en **quadrature**
-  `σ = √(σ₁² + σ₂²)`.
+- **Addition / soustraction** : incertitudes sommées en **quadrature** `σ = √(σ₁² + σ₂²)`.
 - **Multiplication / division** : incertitudes **relatives** sommées en quadrature.
-- **Moyenne pondérée** (plusieurs raies) : poids `1/σᵢ²`, incertitude combinée
-  `√(1 / Σ(1/σᵢ²))`.
-
-Les mesures à valeur `NaN`, à incertitude `NaN` ou à incertitude ≤ 0 sont **ignorées** dans la
-moyenne pondérée ; si rien d'exploitable ne reste, le résultat est manquant.
+- **Moyenne pondérée** (plusieurs raies) : poids `1/σᵢ²`, incertitude combinée `√(1 / Σ(1/σᵢ²))`.
 
 Exemple : `PB-Exc = PB-210 − RA-226` avec `1224.40 ± 64.48` et `178.16 ± 6.20` donne
 `1046.24 ± 64.77` (car `√(64.48² + 6.20²) = 64.77`).
 
 ## Erreurs de configuration
 
-La validation se fait au chargement (`SynthesisConfig.from_toml` / `from_dict`) et lève une
-`ValueError` explicite :
+La validation se fait au chargement (`BuildConfig.from_toml` / `from_dict`) et lève une
+`ValueError` explicite ; le chargement des rapports lève `FileNotFoundError` si un fichier manque.
 
 | Situation | Message |
 |---|---|
+| Échantillon sans `name` | `a sample is missing its 'name'` |
+| Échantillon sans `depth_top`/`depth_bot` | `sample '...' is missing 'depth_top'` |
+| `depth_bot < depth_top` | `sample '...' has depth_bot (...) < depth_top (...)` |
+| Rapport introuvable sous `base_path` | `rapport introuvable pour l'échantillon '...' : ...` |
 | Aucune table `[nuclides.*]` | `config has no [nuclides.*] entries` |
 | Aucune table `[columns.*]` | `config has no [columns.*] entries` |
 | Clé non-identifiant | `nuclide key '...' is not a valid identifier` |
@@ -258,24 +266,27 @@ La validation se fait au chargement (`SynthesisConfig.from_toml` / `from_dict`) 
 
 ```
 src/synthesis/
-├── __init__.py      # API publique : SynthesisBuilder, SynthesisConfig, NuclideSpec, Measurement, numero
+├── __init__.py      # API : SynthesisBuilder, BuildConfig, SampleSpec, NuclideSpec, load_reports, Measurement
 ├── config.py        # modèle + parsing/validation du TOML
+│   ├── SampleSpec       name + depth_top + depth_bot
 │   ├── Peak             nuclide + energy
 │   ├── NuclideSpec      key + liste de Peak
 │   ├── ColumnSpec       key + name + (source | formula)
-│   ├── MetadataSpec     base_year, taux_sedimentation, epaisseur
-│   └── SynthesisConfig  title + metadata + nuclides + columns
-├── measurement.py   # Measurement(value, uncertainty) + opérateurs + weighted_mean
+│   ├── MetadataSpec     base_year, taux_sedimentation
+│   └── BuildConfig      title + base_path + samples + metadata + nuclides + columns
+├── loader.py        # load_reports(config, base_dir) : construit un Report par échantillon depuis base_path
+├── measurement.py   # Measurement(value, uncertainty) + opérateurs + weighted_mean (voir measurement.md)
 ├── providers.py     # lecture section 3 et évaluation des formules
 │   ├── resolve_nuclide(s3, spec)        moyenne pondérée sur les raies
 │   ├── evaluate_formula(formula, ns)    évaluation AST restreinte
 │   └── _peak_measurement(...)           appariement raie ↔ ligne section 3 (tolérance 1 keV)
-└── builder.py       # SynthesisBuilder : résout les nucléides puis assemble les lignes
+└── builder.py       # SynthesisBuilder : résout les nucléides puis assemble une ligne par échantillon
 ```
 
-**Flux** : `SynthesisBuilder.from_toml()` → `SynthesisConfig.from_toml()` (parse + valide) →
-`build(reports)` → pour chaque rapport, `resolve_nuclide()` calcule toutes les sources une fois,
-puis chaque colonne lit sa `source` ou évalue sa `formula` → `DataFrame`.
+**Flux** : `BuildConfig.from_toml()` (parse + valide) → `load_reports()` (lecture disque sous
+`base_path`) → `SynthesisBuilder(config).build(reports)` → pour chaque échantillon,
+`resolve_nuclide()` calcule toutes les sources une fois, puis chaque colonne lit sa `source` ou
+évalue sa `formula` → `DataFrame`.
 
 Les noms de colonnes de la section 3 (`Nom du nucleide`, `Energie (keV)`, `Activite (mBq/g)`,
 `Incert. (mBq/g)`) proviennent de `g2k_parser.columns`, source unique de vérité.
