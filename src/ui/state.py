@@ -15,16 +15,16 @@ def store_reports(files) -> None:
 
     for file in files:
         name = Path(file.name).stem
+        print(f"Path name: {file.name} \n Name: {name}\n")
         if name in reports:
             continue
 
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
             tmp.write(file.read())
             tmp_path = tmp.name
-        print(tmp_path)
-        report = Report(tmp_path)  # On stoque bien l'objet `Report`
+        report = Report(file.name, tmp_path)  # NOTE: On parse et stocke un `Report`
         Path(tmp_path).unlink()
-        reports[name] = report
+        reports[report.name] = report
 
     st.session_state[REPORTS_KEY] = reports
 

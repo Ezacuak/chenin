@@ -1,11 +1,10 @@
 import ast
-import re
 
 import pandas as pd
 
 from g2k_parser import columns as C
 
-from .config import ColumnSpec, Peak
+from .config import NuclideSpec
 from .measurement import Measurement
 
 # Section-3 column names — single source of truth in g2k_parser.columns.
@@ -53,87 +52,26 @@ def _peak_measurement(s3, nuclide: str, energy: float) -> Measurement:
     )
 
 
-def _nuclide_measurements(s3, nuclide: str) -> list[Measurement]:
-    """All usable peak measurements of a nuclide from section 3."""
-    rows = _numeric_rows(s3, nuclide)
-    measurements = []
-    for _, row in rows.iterrows():
-        activity = row[ACTIVITY_COL]
-        if pd.isna(activity):
-            continue
-        measurements.append(Measurement(float(activity), float(row[UNCERTAINTY_COL])))
-    return measurements
-
-
-class ReportProvider:
-    """Resolve a nuclide's activity directly from section 3."""
-
-    def __init__(self, spec: ColumnSpec):
-        self.name = spec.name
-        self.energy = spec.energy
-
-    def resolve(self, s3, _resolved: dict[str, Measurement]) -> Measurement:
-        if self.energy is not None:
-            return _peak_measurement(s3, self.name, self.energy)
-        return Measurement.weighted_mean(_nuclide_measurements(s3, self.name))
-
-
-class MeanProvider:
-    """Inverse-variance weighted mean over an explicit set of peaks."""
-
-    def __init__(self, spec: ColumnSpec):
-        self.peaks: list[Peak] = spec.peaks
-
-    def resolve(self, s3, _resolved: dict[str, Measurement]) -> Measurement:
-        measurements = [
-            _peak_measurement(s3, peak.nuclide, peak.energy) for peak in self.peaks
-        ]
-        return Measurement.weighted_mean(measurements)
-
-
-class CalculatedProvider:
-    """Evaluate a formula over already-resolved element measurements."""
-
-    def __init__(self, spec: ColumnSpec):
-        self.formula = spec.formula
-
-    def resolve(self, _s3, resolved: dict[str, Measurement]) -> Measurement:
-        return _safe_eval(self.formula, resolved)
-
-
-def build_provider(spec: ColumnSpec):
-    """Factory: pick the provider strategy for a column spec."""
-    if spec.provider == "report":
-        return ReportProvider(spec)
-    if spec.provider == "mean":
-        return MeanProvider(spec)
-    if spec.provider == "calculated":
-        return CalculatedProvider(spec)
-    raise ValueError(f"unknown provider '{spec.provider}'")
+def resolve_nuclide(s3, spec: NuclideSpec) -> Measurement:
+    """Inverse-variance weighted mean over a nuclide's configured peaks."""
+    measurements = [
+        _peak_measurement(s3, peak.nuclide, peak.energy) for peak in spec.peaks
+    ]
+    return Measurement.weighted_mean(measurements)
 
 
 # --- safe formula evaluation -------------------------------------------------
 
-# Element names like "PB-210" or "PB-Exc" are not valid Python identifiers; map them to
-# sanitized identifiers before parsing, and look those up in the namespace.
-_NAME_RE = re.compile(r"[A-Za-z]{1,2}-[A-Za-z0-9]{1,4}")
-
 _ALLOWED_BINOPS = (ast.Add, ast.Sub, ast.Mult, ast.Div)
 
 
-def _sanitize(name: str) -> str:
-    return name.replace("-", "_")
+def evaluate_formula(formula: str, namespace: dict[str, Measurement]) -> Measurement:
+    """Evaluate an arithmetic formula over resolved nuclide measurements.
 
-
-def _safe_eval(formula: str, resolved: dict[str, Measurement]) -> Measurement:
-    """Evaluate an arithmetic formula over resolved element measurements.
-
-    Only names, numeric constants and ``+ - * /`` (binary and unary) are permitted.
+    Names refer to nuclide keys (valid identifiers); only names, numeric constants and
+    ``+ - * /`` (binary and unary) are permitted.
     """
-    namespace = {_sanitize(name): m for name, m in resolved.items()}
-    expr = _NAME_RE.sub(lambda m: _sanitize(m.group(0)), formula)
-
-    tree = ast.parse(expr, mode="eval")
+    tree = ast.parse(formula, mode="eval")
     return _eval_node(tree.body, namespace)
 
 
@@ -157,7 +95,7 @@ def _eval_node(node, namespace: dict[str, Measurement]) -> Measurement:
 
     if isinstance(node, ast.Name):
         if node.id not in namespace:
-            raise ValueError(f"unknown element '{node.id}' in formula")
+            raise ValueError(f"unknown nuclide '{node.id}' in formula")
         return namespace[node.id]
 
     if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):

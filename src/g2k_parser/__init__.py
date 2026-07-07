@@ -1,6 +1,7 @@
 from . import columns
 from .parser import G2KParser
 from .report import Report
+from .utils import format_nuclide
 
 SECTION_DESCRIPTIONS = {
     "s1": "Rapport de l'analyse du spectre (métadonnées)",
@@ -12,4 +13,4 @@ SECTION_DESCRIPTIONS = {
     "s6": "Rapport limites de détection ISO 11929",
 }
 
-__all__ = ["G2KParser", "Report", "SECTION_DESCRIPTIONS", "columns"]
+__all__ = ["G2KParser", "Report", "SECTION_DESCRIPTIONS", "columns", "format_nuclide"]
