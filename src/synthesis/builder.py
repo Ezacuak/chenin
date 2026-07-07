@@ -1,46 +1,46 @@
 import math
-import re
 from io import BufferedReader
 
 import pandas as pd
 
 from g2k_parser import Report
 
-from .config import SynthesisConfig
+from .config import BuildConfig, SampleSpec
 from .measurement import Measurement
 from .providers import evaluate_formula, resolve_nuclide
 
-_NUMERO_RE = re.compile(r"(\d+)(?!.*\d)")  # last integer in a string
-
 
 class SynthesisBuilder:
-    """Build a synthesis ``DataFrame`` from reports using a configuration."""
+    """Build a synthesis ``DataFrame`` from reports using a build configuration."""
 
-    def __init__(self, config: SynthesisConfig):
+    def __init__(self, config: BuildConfig):
         self.config = config
 
     @classmethod
     def from_toml(cls, file: str | BufferedReader) -> "SynthesisBuilder":
-        """Create a builder from a TOML configuration file."""
-        return cls(SynthesisConfig.from_toml(file))
+        """Create a builder from a TOML build file."""
+        return cls(BuildConfig.from_toml(file))
 
-    def build(self, reports: list[Report]) -> pd.DataFrame:
-        """Build the synthesis: one row per report, in the given order."""
+    def build(self, reports: dict[str, Report]) -> pd.DataFrame:
+        """Build the synthesis: one row per sample, in build-file order.
+
+        ``reports`` maps a sample ``name`` to its parsed Report (see ``load_reports``).
+        """
         rows = []
-        depth = 0.0
-        for report in reports:
-            row, depth = self._build_row(report, depth)
-            rows.append(row)
+        for sample in self.config.samples:
+            report = reports.get(sample.name)
+            if report is None:
+                raise KeyError(f"aucun rapport chargé pour l'échantillon '{sample.name}'")
+            rows.append(self._build_row(sample, report))
         return pd.DataFrame(rows)
 
-    def _build_row(self, report: Report, depth: float) -> tuple[dict, float]:
+    def _build_row(self, sample: SampleSpec, report: Report) -> dict:
         section = report["s3"]
         meta = self.config.metadata
-        epaisseur = meta.epaisseur
 
         row: dict = {
-            "Profondeur": depth,
-            "Epaisseur": epaisseur,
+            "Profondeur": sample.depth_top,
+            "Epaisseur": sample.depth_bot - sample.depth_top,
         }
 
         # Resolve every nuclide source once; columns then read a source or a formula.
@@ -57,10 +57,9 @@ class SynthesisBuilder:
             row[f"Activite {col.name}"] = m.value
             row[f"Incertitude {col.name}"] = m.uncertainty
 
-        row["Age"] = _age(depth, meta.base_year, meta.taux_sedimentation)
+        row["Age"] = _age(sample.depth_top, meta.base_year, meta.taux_sedimentation)
 
-        next_depth = depth + epaisseur if epaisseur is not None else depth
-        return row, next_depth
+        return row
 
 
 def _age(depth: float, base_year, taux_sedimentation) -> float:

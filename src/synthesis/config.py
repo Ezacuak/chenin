@@ -41,19 +41,33 @@ class ColumnSpec:
 
 
 @dataclass(frozen=True)
-class MetadataSpec:
-    """Sample-level metadata used to fill non-activity columns."""
+class SampleSpec:
+    """One sediment sample: a report file plus its layer geometry (cm).
 
-    base_year: float | None = None
-    taux_sedimentation: float | None = None
-    epaisseur: float | None = None
+    ``depth_top``/``depth_bot`` are the missing data source — they are not present in
+    the G2K report and must come from the build file.
+    """
+
+    name: str
+    depth_top: float
+    depth_bot: float
 
 
 @dataclass(frozen=True)
-class SynthesisConfig(Mapping):
-    """A validated synthesis configuration."""
+class MetadataSpec:
+    """Core-level metadata used to fill non-activity columns."""
+
+    base_year: float | None = None
+    taux_sedimentation: float | None = None
+
+
+@dataclass(frozen=True)
+class BuildConfig(Mapping):
+    """A validated build configuration: samples + synthesis format in one file."""
 
     title: str
+    base_path: str | None
+    samples: list[SampleSpec]
     metadata: MetadataSpec
     nuclides: dict[str, NuclideSpec]
     columns: list[ColumnSpec]
@@ -71,7 +85,7 @@ class SynthesisConfig(Mapping):
         return len(fields(self))
 
     @classmethod
-    def from_toml(cls, file: str | BufferedReader | UploadedFile) -> "SynthesisConfig":
+    def from_toml(cls, file: str | BufferedReader | UploadedFile) -> "BuildConfig":
         """Load and validate a configuration from a TOML file path or binary file-like object."""
         if isinstance(file, str):
             with open(file, "rb") as f:
@@ -81,14 +95,16 @@ class SynthesisConfig(Mapping):
         return cls.from_dict(raw)
 
     @classmethod
-    def from_dict(cls, raw: dict) -> "SynthesisConfig":
+    def from_dict(cls, raw: dict) -> "BuildConfig":
+
+        # --------------------- Samples  ---------------------- #
+        samples = [_parse_sample(spec) for spec in raw.get("samples", [])]
 
         # --------------------- MetaData  --------------------- #
         meta_raw = raw.get("metadata", {})
         metadata = MetadataSpec(
             base_year=meta_raw.get("base_year"),
             taux_sedimentation=meta_raw.get("taux_sedimentation"),
-            epaisseur=meta_raw.get("epaisseur"),
         )
 
         # --------------------- Nucleides --------------------- #
@@ -109,6 +125,8 @@ class SynthesisConfig(Mapping):
 
         return cls(
             title=raw.get("title", "Synthese"),
+            base_path=raw.get("base_path"),
+            samples=samples,
             metadata=metadata,
             nuclides=nuclides,
             columns=columns,
@@ -119,6 +137,25 @@ def _require_identifier(kind: str, key: str) -> None:
     """A nuclide/column key must be a valid identifier so formulas can reference it."""
     if not key.isidentifier():
         raise ValueError(f"{kind} key '{key}' is not a valid identifier")
+
+
+def _parse_sample(spec: dict) -> SampleSpec:
+    """Validate and build a single SampleSpec, raising clear errors."""
+    name = spec.get("name")
+    if not name:
+        raise ValueError("a sample is missing its 'name'")
+    for field in ("depth_top", "depth_bot"):
+        if field not in spec:
+            raise ValueError(f"sample '{name}' is missing '{field}'")
+
+    depth_top = float(spec["depth_top"])
+    depth_bot = float(spec["depth_bot"])
+    if depth_bot < depth_top:
+        raise ValueError(
+            f"sample '{name}' has depth_bot ({depth_bot}) < depth_top ({depth_top})"
+        )
+
+    return SampleSpec(name=name, depth_top=depth_top, depth_bot=depth_bot)
 
 
 def _parse_nuclide(key: str, spec: dict) -> NuclideSpec:

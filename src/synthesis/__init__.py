@@ -1,11 +1,14 @@
 from .builder import SynthesisBuilder
-from .config import MetadataSpec, NuclideSpec, SynthesisConfig
+from .config import BuildConfig, MetadataSpec, NuclideSpec, SampleSpec
+from .loader import load_reports
 from .measurement import Measurement
 
 __all__ = [
     "SynthesisBuilder",
-    "SynthesisConfig",
+    "BuildConfig",
     "MetadataSpec",
     "NuclideSpec",
+    "SampleSpec",
+    "load_reports",
     "Measurement",
 ]
