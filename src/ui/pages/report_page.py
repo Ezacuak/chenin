@@ -10,21 +10,11 @@ pd.set_option("display.float_format", lambda x: f"{x:f}")
 
 st.title("Extraction de rapport")
 
-with st.sidebar:
-    st.header("Ouvrir des rapports")
-    reports_files = st.file_uploader(
-        "Sélectionner un ou plusieurs fichiers de rapport G2K",
-        type=["txt", "pdf"],
-        accept_multiple_files=True,
-    )
-
-state.store_reports(reports_files)
-
 reports = state.get_reports()
 
 if not reports:
     st.info(
-        "Chargez un ou plusieurs fichiers de rapport G2K dans la barre latérale pour commencer."
+        "Importez un fichier build (.toml) dans la barre latérale pour charger les rapports."
     )
     st.stop()
 

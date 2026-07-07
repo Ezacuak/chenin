@@ -1,32 +1,22 @@
-import tempfile
-from pathlib import Path
-
 import pandas as pd
 import streamlit as st
 
 from g2k_parser import Report
+from synthesis import BuildConfig
 
+BUILD_CONFIG_KEY = "build_config"
 REPORTS_KEY = "reports"
 SYNTHESIS_KEY = "synthesis"
 
 
-def store_reports(files) -> None:
-    reports = get_reports()
-
-    for file in files:
-        name = Path(file.name).stem
-        print(f"Path name: {file.name} \n Name: {name}\n")
-        if name in reports:
-            continue
-
-        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
-            tmp.write(file.read())
-            tmp_path = tmp.name
-        report = Report(file.name, tmp_path)  # NOTE: On parse et stocke un `Report`
-        Path(tmp_path).unlink()
-        reports[report.name] = report
-
+def store_build(config: BuildConfig, reports: dict[str, Report]) -> None:
+    """Store the build configuration and its loaded reports (posed by app.py)."""
+    st.session_state[BUILD_CONFIG_KEY] = config
     st.session_state[REPORTS_KEY] = reports
+
+
+def get_build_config() -> BuildConfig | None:
+    return st.session_state.get(BUILD_CONFIG_KEY)
 
 
 def get_reports() -> dict[str, Report]:
