@@ -1,9 +1,10 @@
 import argparse
 import os
 import sys
+from pathlib import Path
 
 from g2k_parser import SECTION_DESCRIPTIONS, Report
-from synthesis import SynthesisBuilder
+from synthesis import BuildConfig, SynthesisBuilder, load_reports
 
 SUBCOMMANDS = ("extract", "synthesis")
 
@@ -33,10 +34,12 @@ def _add_extract_parser(subparsers):
 def _add_synthesis_parser(subparsers):
     p = subparsers.add_parser(
         "synthesis",
-        help="construit une synthèse multi-rapports à partir d'un fichier TOML",
+        help="construit une synthèse à partir d'un fichier build TOML",
     )
-    p.add_argument("config", help="chemin vers la configuration TOML de synthèse")
-    p.add_argument("reports", nargs="+", help="rapports Génie2000 (.txt), dans l'ordre")
+    p.add_argument(
+        "build_file",
+        help="chemin vers le fichier build TOML (échantillons + format de synthèse)",
+    )
     p.add_argument(
         "--output", "-o", metavar="FILE", help="écrit la synthèse en CSV dans FILE"
     )
@@ -44,7 +47,7 @@ def _add_synthesis_parser(subparsers):
 
 
 def _run_extract(args):
-    data = Report(args.report)
+    data = Report(args.report, args.report)
 
     if args.section:
         print(data[args.section].to_string())
@@ -64,9 +67,9 @@ def _run_extract(args):
 
 
 def _run_synthesis(args):
-    builder = SynthesisBuilder.from_toml(args.config)
-    reports = [Report(path) for path in args.reports]
-    synthesis = builder.build(reports)
+    config = BuildConfig.from_toml(args.build_file)
+    reports = load_reports(config, Path(args.build_file).parent)
+    synthesis = SynthesisBuilder(config).build(reports)
 
     if args.output:
         synthesis.to_csv(args.output, index=False)
