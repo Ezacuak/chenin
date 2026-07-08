@@ -1,6 +1,6 @@
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -16,23 +16,23 @@ class Measurement:
         return math.isnan(self.value)
 
     @classmethod
-    def missing(cls) -> "Measurement":
+    def missing(cls) -> Measurement:
         """A missing measurement (both fields NaN)."""
         return cls(math.nan, math.nan)
 
-    def __add__(self, other: "Measurement") -> "Measurement":
+    def __add__(self, other: Measurement) -> Measurement:
         return Measurement(
             self.value + other.value,
             _quad(self.uncertainty, other.uncertainty),
         )
 
-    def __sub__(self, other: "Measurement") -> "Measurement":
+    def __sub__(self, other: Measurement) -> Measurement:
         return Measurement(
             self.value - other.value,
             _quad(self.uncertainty, other.uncertainty),
         )
 
-    def __mul__(self, other: "Measurement") -> "Measurement":
+    def __mul__(self, other: Measurement) -> Measurement:
         value = self.value * other.value
         # relative uncertainties add in quadrature
         rel = _quad(
@@ -41,7 +41,7 @@ class Measurement:
         )
         return Measurement(value, abs(value) * rel)
 
-    def __truediv__(self, other: "Measurement") -> "Measurement":
+    def __truediv__(self, other: Measurement) -> Measurement:
         value = self.value / other.value
         rel = _quad(
             _safe_div(self.uncertainty, self.value),
@@ -49,11 +49,11 @@ class Measurement:
         )
         return Measurement(value, abs(value) * rel)
 
-    def __neg__(self) -> "Measurement":
+    def __neg__(self) -> Measurement:
         return Measurement(-self.value, self.uncertainty)
 
     @classmethod
-    def weighted_mean(cls, measurements: Iterable["Measurement"]) -> "Measurement":
+    def weighted_mean(cls, measurements: Iterable[Measurement]) -> Measurement:
         """Inverse-variance weighted mean of several measurements.
 
         The scientific standard for combining the activities of a nuclide measured on

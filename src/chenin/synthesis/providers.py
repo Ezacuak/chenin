@@ -2,7 +2,7 @@ import ast
 
 import pandas as pd
 
-from g2k_parser import columns as C
+from chenin.g2k_parser import columns as C
 
 from .config import NuclideSpec
 from .measurement import Measurement

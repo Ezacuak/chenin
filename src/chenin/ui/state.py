@@ -1,8 +1,10 @@
+"""Shared Streamlit session-state helpers, used by app.py and every page."""
+
 import pandas as pd
 import streamlit as st
 
-from g2k_parser import Report
-from synthesis import BuildConfig
+from chenin.g2k_parser import Report
+from chenin.synthesis import BuildConfig
 
 BUILD_CONFIG_KEY = "build_config"
 REPORTS_KEY = "reports"
@@ -10,7 +12,7 @@ SYNTHESIS_KEY = "synthesis"
 
 
 def store_build(config: BuildConfig, reports: dict[str, Report]) -> None:
-    """Store the build configuration and its loaded reports (posed by app.py)."""
+    """Store the active build configuration and its loaded reports."""
     st.session_state[BUILD_CONFIG_KEY] = config
     st.session_state[REPORTS_KEY] = reports
 

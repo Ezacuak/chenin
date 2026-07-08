@@ -188,14 +188,17 @@ formula = "pb210 - ra226"
 ### En ligne de commande
 
 ```sh
-uv run src/cli.py synthesis <build_file.toml>
+chenin synthesis <build_file.toml>
 
 # Exemple sur le jeu NOI_S
-uv run src/cli.py synthesis NOI_S_Builder.toml
+chenin synthesis NOI_S_Builder.toml
 
 # Export CSV
-uv run src/cli.py synthesis NOI_S_Builder.toml -o synthese.csv
+chenin synthesis NOI_S_Builder.toml -o synthese.csv
 ```
+
+Depuis un clone (au lieu de l'outil installé), préfixer par `uv run` :
+`uv run chenin synthesis NOI_S_Builder.toml`.
 
 Les rapports viennent du fichier build (`[[samples]]` + `base_path`) — inutile de les lister.
 
@@ -203,7 +206,7 @@ Les rapports viennent du fichier build (`[[samples]]` + `base_path`) — inutile
 
 ```python
 from pathlib import Path
-from synthesis import BuildConfig, SynthesisBuilder, load_reports
+from chenin.synthesis import BuildConfig, SynthesisBuilder, load_reports
 
 config = BuildConfig.from_toml("NOI_S_Builder.toml")
 reports = load_reports(config, Path("."))     # dict {name: Report}, lus sous base_path
@@ -212,8 +215,8 @@ df = SynthesisBuilder(config).build(reports)  # une ligne par échantillon, dans
 
 ### Dans Streamlit
 
-Le fichier build est importé **une seule fois** en haut de la barre latérale (`src/app.py`). Les
-pages « Extracteur » et « Synthèse » consomment ensuite l'état partagé
+Lancer l'app avec `chenin app`. Le fichier build est importé **une seule fois** dans la barre
+latérale. Les pages « Reports » et « Synthesis » consomment ensuite l'état partagé
 (`state.get_build_config()`, `state.get_reports()`).
 
 ## Colonnes de sortie
@@ -265,7 +268,7 @@ La validation se fait au chargement (`BuildConfig.from_toml` / `from_dict`) et l
 ## Architecture interne
 
 ```
-src/synthesis/
+src/chenin/synthesis/
 ├── __init__.py      # API : SynthesisBuilder, BuildConfig, SampleSpec, NuclideSpec, load_reports, Measurement
 ├── config.py        # modèle + parsing/validation du TOML
 │   ├── SampleSpec       name + depth_top + depth_bot

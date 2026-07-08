@@ -3,30 +3,28 @@ import os
 import sys
 from pathlib import Path
 
-from g2k_parser import SECTION_DESCRIPTIONS, Report
-from synthesis import BuildConfig, SynthesisBuilder, load_reports
+from chenin.g2k_parser import SECTION_DESCRIPTIONS, Report
+from chenin.synthesis import BuildConfig, SynthesisBuilder, load_reports
 
-SUBCOMMANDS = ("extract", "synthesis")
+SUBCOMMANDS = ("extract", "synthesis", "app")
 
 
 def _add_extract_parser(subparsers):
     section_help = "\n".join(f"  {k:<14} {v}" for k, v in SECTION_DESCRIPTIONS.items())
     p = subparsers.add_parser(
         "extract",
-        help="extrait les sections d'un rapport Génie2000",
+        help="extract the sections of a Génie 2000 report",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=f"sections disponibles :\n{section_help}",
+        epilog=f"available sections:\n{section_help}",
     )
-    p.add_argument("report", help="chemin vers le rapport Génie2000 (.txt)")
-    p.add_argument(
-        "--output", "-o", metavar="DIR", help="exporte chaque section en CSV dans DIR"
-    )
+    p.add_argument("report", help="path to the Génie 2000 report (.txt)")
+    p.add_argument("--output", "-o", metavar="DIR", help="export each section as CSV into DIR")
     p.add_argument(
         "--section",
         "-s",
         choices=list(SECTION_DESCRIPTIONS),
         metavar="SECTION",
-        help="affiche une seule section",
+        help="print a single section",
     )
     p.set_defaults(func=_run_extract)
 
@@ -34,20 +32,26 @@ def _add_extract_parser(subparsers):
 def _add_synthesis_parser(subparsers):
     p = subparsers.add_parser(
         "synthesis",
-        help="construit une synthèse à partir d'un fichier build TOML",
+        help="build a synthesis from a TOML build file",
     )
     p.add_argument(
         "build_file",
-        help="chemin vers le fichier build TOML (échantillons + format de synthèse)",
+        help="path to the TOML build file (samples + synthesis format)",
     )
-    p.add_argument(
-        "--output", "-o", metavar="FILE", help="écrit la synthèse en CSV dans FILE"
-    )
+    p.add_argument("--output", "-o", metavar="FILE", help="write the synthesis as CSV to FILE")
     p.set_defaults(func=_run_synthesis)
 
 
+def _add_app_parser(subparsers):
+    p = subparsers.add_parser("app", help="launch the Chenin Streamlit app")
+    p.add_argument(
+        "--port", type=int, default=8501, help="port to serve the app on (default: 8501)"
+    )
+    p.set_defaults(func=_run_app)
+
+
 def _run_extract(args):
-    data = Report(args.report, args.report)
+    data = Report(args.report)
 
     if args.section:
         print(data[args.section].to_string())
@@ -79,15 +83,24 @@ def _run_synthesis(args):
     print(synthesis.to_string(index=False))
 
 
+def _run_app(args):
+    import streamlit.web.cli as stcli
+
+    app_path = Path(__file__).parent / "ui" / "app.py"
+    sys.argv = ["streamlit", "run", str(app_path), "--server.port", str(args.port)]
+    sys.exit(stcli.main())
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Extrait et synthétise les données des rapports Génie2000.",
+        description="Extract and synthesise data from Génie 2000 reports.",
     )
     subparsers = parser.add_subparsers(dest="command")
     _add_extract_parser(subparsers)
     _add_synthesis_parser(subparsers)
+    _add_app_parser(subparsers)
 
-    # Backward compatibility: `chenin rapport.txt ...` still runs the extractor.
+    # Backward compatibility: `chenin report.txt ...` still runs the extractor.
     argv = sys.argv[1:]
     if argv and argv[0] not in SUBCOMMANDS and argv[0] not in ("-h", "--help"):
         argv = ["extract", *argv]

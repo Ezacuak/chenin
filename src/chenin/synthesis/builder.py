@@ -1,9 +1,9 @@
-import math
-from io import BufferedReader
+from pathlib import Path
+from typing import IO
 
 import pandas as pd
 
-from g2k_parser import Report
+from chenin.g2k_parser import Report
 
 from .config import BuildConfig, SampleSpec
 from .measurement import Measurement
@@ -17,7 +17,7 @@ class SynthesisBuilder:
         self.config = config
 
     @classmethod
-    def from_toml(cls, file: str | BufferedReader) -> "SynthesisBuilder":
+    def from_toml(cls, file: str | Path | IO[bytes]) -> SynthesisBuilder:
         """Create a builder from a TOML build file."""
         return cls(BuildConfig.from_toml(file))
 
@@ -30,9 +30,13 @@ class SynthesisBuilder:
         for sample in self.config.samples:
             report = reports.get(sample.name)
             if report is None:
-                raise KeyError(f"aucun rapport chargé pour l'échantillon '{sample.name}'")
+                raise KeyError(f"no report loaded for sample '{sample.name}'")
             rows.append(self._build_row(sample, report))
         return pd.DataFrame(rows)
+
+    def _has_age_model(self) -> bool:
+        meta = self.config.metadata
+        return meta.base_year is not None and bool(meta.taux_sedimentation)
 
     def _build_row(self, sample: SampleSpec, report: Report) -> dict:
         section = report["s3"]
@@ -57,13 +61,8 @@ class SynthesisBuilder:
             row[f"Activite {col.name}"] = m.value
             row[f"Incertitude {col.name}"] = m.uncertainty
 
-        row["Age"] = _age(sample.depth_top, meta.base_year, meta.taux_sedimentation)
+        # Age from a constant sedimentation rate — only when the model is configured.
+        if self._has_age_model():
+            row["Age"] = meta.base_year - sample.depth_top / meta.taux_sedimentation
 
         return row
-
-
-def _age(depth: float, base_year, taux_sedimentation) -> float:
-    """Age = base_year - depth / taux_sedimentation (NaN if inputs are missing)."""
-    if base_year is None or not taux_sedimentation:
-        return math.nan
-    return base_year - depth / taux_sedimentation

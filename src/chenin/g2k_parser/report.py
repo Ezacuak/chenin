@@ -6,25 +6,20 @@ from .parser import G2KParser
 
 
 class Report(Mapping):
-    """
-    Build report from a parser
+    """A parsed Génie 2000 report: an ordered, read-only mapping of sections.
 
-    For now just G2K
-
-    What is that ?
-
-    It's a list of 6 section.
-    Each section is Dataframe (Pandas)
+    Each section (``s1``–``s6``) is a :class:`pandas.DataFrame`. Sections are
+    reachable both by string key (``report["s3"]``) and by integer index
+    (``report[2]``, in section order).
     """
 
     def __init__(
-        self, local_path: str, temp_path: str, parser: G2KParser | None = None
+        self, path: str | Path, *, name: str | None = None, parser: G2KParser | None = None
     ) -> None:
-        self.local_path = local_path
-        self.temp_path = temp_path
-        self.name = Path(local_path).stem
+        self.path = Path(path)
+        self.name = name or self.path.stem
         self.parser = parser or G2KParser()
-        self._data = self.parser.parse(temp_path)
+        self._data = self.parser.parse(str(self.path))
 
     def __getitem__(self, key: Any) -> Any:
         if isinstance(key, int):

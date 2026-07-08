@@ -19,24 +19,16 @@ from .utils import normalize_columns, split_sections
 
 
 class G2KParser:
-    """
-    Implement Parser class to extract G2K report
+    """Parse a Génie 2000 ``.txt`` report into its constituent sections.
 
-    Extract 6 sections from a report file (`txt` format)
+    Splits the report on its ``*****TITLE*****`` banners, then extracts a header
+    and a data table from each of the six sections.
     """
 
     def parse(self, path: str) -> dict[str, pd.DataFrame]:
-        """
-        Parse the report in section.
-
-        Then extract header and data from each section to a dictionary of Pandas DataFrame.
-        """
-
-        try:
-            with open(path) as f:
-                content = f.read()
-        except OSError:
-            raise
+        """Parse the report at ``path`` into a dict of section name -> DataFrame."""
+        with open(path) as f:
+            content = f.read()
 
         titles, sections = split_sections(content)
 
