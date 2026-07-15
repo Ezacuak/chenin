@@ -23,6 +23,11 @@ pages = {
         st.Page(_PAGES_DIR / "reports.py", title="Reports", icon=":material/description:"),
         st.Page(_PAGES_DIR / "synthesis.py", title="Synthesis", icon=":material/insights:"),
     ],
+    "Help": [
+        st.Page(
+            _PAGES_DIR / "documentation.py", title="Documentation", icon=":material/menu_book:"
+        ),
+    ],
 }
 
 pg = st.navigation(pages, position="top")

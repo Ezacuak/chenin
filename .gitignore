@@ -18,12 +18,6 @@ out/
 test/
 note.md
 
-data/
-data/**/*.csv
-data/**/*.xlsx
-data/**/*.txt
-data/**/*.toml
-
 
 # AI and Agents
 .claude/

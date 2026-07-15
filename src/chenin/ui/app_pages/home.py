@@ -70,5 +70,3 @@ with st.expander("Where does depth come from?", icon=":material/help:"):
         "`[[samples]]` list supplies `depth_top`/`depth_bot` (cm) for each report, in "
         "core order."
     )
-
-st.caption("See the user guide (`docs/user-guide.md`) for the full workflow.")

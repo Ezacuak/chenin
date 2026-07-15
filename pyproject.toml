@@ -22,6 +22,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/chenin"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"docs" = "chenin/docs"
+
 [dependency-groups]
 dev = [
     "ipykernel>=7.2.0",

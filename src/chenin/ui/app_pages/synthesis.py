@@ -121,6 +121,13 @@ with legend_col:
 # ------------------------------- Depth profiles ---------------------------------------#
 st.subheader("Profiles", divider="gray")
 
+log_scale = st.toggle(
+    "Log scale",
+    key="profile_log_scale",
+    help="Semi-log view — a straight line indicates a constant sedimentation rate "
+    "(the classic ²¹⁰Pb CRS/CFCS diagnostic). Non-positive values are hidden.",
+)
+
 n_cols = 3
 cols = st.columns(n_cols)
 for i, activity_col in enumerate(activity_cols):
@@ -136,9 +143,83 @@ for i, activity_col in enumerate(activity_cols):
         )
     )
     fig.update_yaxes(autorange="reversed", title="Depth (cm)")
-    fig.update_xaxes(title=f"{name} (mBq/g)")
+    fig.update_xaxes(title=f"{name} (mBq/g)", type="log" if log_scale else "linear")
     fig.update_layout(height=320, margin=dict(l=10, r=10, t=30, b=10), title=name)
     cols[i % n_cols].plotly_chart(fig, width="stretch", key=f"profile_{name}")
+
+# ------------------------------- Age model ----------------------------------------------#
+if has_age:
+    st.subheader("Age model", divider="gray")
+
+    fig_age = go.Figure(
+        go.Scatter(x=df["Age"], y=df["Profondeur"], mode="lines+markers", marker=dict(size=8))
+    )
+    fig_age.update_yaxes(autorange="reversed", title="Depth (cm)")
+    fig_age.update_xaxes(title="Age (yr)")
+    fig_age.update_layout(height=380, margin=dict(l=10, r=10, t=10, b=10))
+    st.plotly_chart(fig_age, width="stretch", key="age_chart")
+
+    if meta.taux_sedimentation:
+        st.caption(f"Constant sedimentation rate: {meta.taux_sedimentation:g} cm/yr.")
+
+# ------------------------------- Profile comparison -------------------------------------#
+st.subheader("Profile comparison", divider="gray")
+st.caption("Each profile min–max normalised to [0, 1], for comparing shapes at a glance.")
+
+fig_overlay = go.Figure()
+for activity_col in activity_cols:
+    name = _nuclide_name(activity_col)
+    values = df[activity_col]
+    span = values.max() - values.min()
+    normalized = (values - values.min()) / span if span else values * 0
+    fig_overlay.add_trace(go.Scatter(x=normalized, y=depth_mid, mode="lines+markers", name=name))
+fig_overlay.update_yaxes(autorange="reversed", title="Depth (cm)")
+fig_overlay.update_xaxes(title="Normalised activity")
+fig_overlay.update_layout(height=420, margin=dict(l=10, r=10, t=10, b=10))
+st.plotly_chart(fig_overlay, width="stretch", key="overlay_chart")
+
+# ------------------------------- Correlation --------------------------------------------#
+if len(activity_cols) >= 2:
+    st.subheader("Correlation between nuclides", divider="gray")
+
+    names = [_nuclide_name(c) for c in activity_cols]
+    corr = df[activity_cols].corr()
+
+    fig_corr = go.Figure(
+        go.Heatmap(
+            z=corr.to_numpy(),
+            x=names,
+            y=names,
+            zmin=-1,
+            zmax=1,
+            colorscale="RdBu",
+            reversescale=True,
+            colorbar=dict(title="r"),
+            text=corr.round(2).to_numpy(),
+            texttemplate="%{text}",
+        )
+    )
+    fig_corr.update_layout(height=380, margin=dict(l=10, r=10, t=10, b=10))
+    st.plotly_chart(fig_corr, width="stretch", key="corr_chart")
+
+# ------------------------------- Data quality --------------------------------------------#
+st.subheader("Data quality", divider="gray")
+st.caption("Relative uncertainty (1σ) per nuclide — flags low-count measurements.")
+
+fig_qc = go.Figure()
+for activity_col in activity_cols:
+    name = _nuclide_name(activity_col)
+    unc_col = f"Incertitude {name}"
+    if unc_col not in df:
+        continue
+    relative_uncertainty = (df[unc_col] / df[activity_col]).abs() * 100
+    fig_qc.add_trace(
+        go.Scatter(x=relative_uncertainty, y=depth_mid, mode="lines+markers", name=name)
+    )
+fig_qc.update_yaxes(autorange="reversed", title="Depth (cm)")
+fig_qc.update_xaxes(title="Relative uncertainty (%)")
+fig_qc.update_layout(height=420, margin=dict(l=10, r=10, t=10, b=10))
+st.plotly_chart(fig_qc, width="stretch", key="qc_chart")
 
 # ------------------------------- Table --------------------------------------------------#
 st.subheader("Table", divider="gray")
