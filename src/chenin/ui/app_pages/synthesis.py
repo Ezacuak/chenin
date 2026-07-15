@@ -14,7 +14,7 @@ config = state.get_build_config()
 reports = state.get_reports()
 
 if config is None or not reports:
-    st.info("Load a build file (.toml) in the sidebar to build the synthesis.")
+    st.info("Load a roadmap on the Roadmap page to build the synthesis.")
     st.stop()
 
 with st.expander(f"Configuration — “{config.title}”", expanded=False):
@@ -161,46 +161,6 @@ if has_age:
 
     if meta.taux_sedimentation:
         st.caption(f"Constant sedimentation rate: {meta.taux_sedimentation:g} cm/yr.")
-
-# ------------------------------- Profile comparison -------------------------------------#
-st.subheader("Profile comparison", divider="gray")
-st.caption("Each profile min–max normalised to [0, 1], for comparing shapes at a glance.")
-
-fig_overlay = go.Figure()
-for activity_col in activity_cols:
-    name = _nuclide_name(activity_col)
-    values = df[activity_col]
-    span = values.max() - values.min()
-    normalized = (values - values.min()) / span if span else values * 0
-    fig_overlay.add_trace(go.Scatter(x=normalized, y=depth_mid, mode="lines+markers", name=name))
-fig_overlay.update_yaxes(autorange="reversed", title="Depth (cm)")
-fig_overlay.update_xaxes(title="Normalised activity")
-fig_overlay.update_layout(height=420, margin=dict(l=10, r=10, t=10, b=10))
-st.plotly_chart(fig_overlay, width="stretch", key="overlay_chart")
-
-# ------------------------------- Correlation --------------------------------------------#
-if len(activity_cols) >= 2:
-    st.subheader("Correlation between nuclides", divider="gray")
-
-    names = [_nuclide_name(c) for c in activity_cols]
-    corr = df[activity_cols].corr()
-
-    fig_corr = go.Figure(
-        go.Heatmap(
-            z=corr.to_numpy(),
-            x=names,
-            y=names,
-            zmin=-1,
-            zmax=1,
-            colorscale="RdBu",
-            reversescale=True,
-            colorbar=dict(title="r"),
-            text=corr.round(2).to_numpy(),
-            texttemplate="%{text}",
-        )
-    )
-    fig_corr.update_layout(height=380, margin=dict(l=10, r=10, t=10, b=10))
-    st.plotly_chart(fig_corr, width="stretch", key="corr_chart")
 
 # ------------------------------- Data quality --------------------------------------------#
 st.subheader("Data quality", divider="gray")

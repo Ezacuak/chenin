@@ -13,8 +13,10 @@ Chenin does three things:
 3. **Visualise & export** — browse everything in a web app and export to CSV, Parquet
    or SERAC.
 
-Everything is driven by a single **build file** (a `.toml`) that says which reports
-belong to the core, at what depths, and which nuclides to pull out.
+Everything is driven by a single **roadmap** (a `.csv` or `.xlsx` spreadsheet) that
+lists which reports belong to the core and at what depths. The nuclides to pull out
+come from a **synthesis template**, and a sensible lab default ships with Chenin — so
+in the common case the roadmap is all you write.
 
 ## Requirements
 
@@ -50,71 +52,60 @@ chenin extract data/test/rapport-RGU_3cm.txt          # all sections to stdout
 chenin extract data/test/rapport-RGU_3cm.txt -s s3    # just section 3
 chenin extract data/test/rapport-RGU_3cm.txt -o out/  # each section to a CSV
 
-# 2. Build a synthesis from a build file
-chenin synthesis NOI_S_Builder.toml                   # print the table
-chenin synthesis NOI_S_Builder.toml -o synthesis.csv  # export it
+# 2. Build a synthesis from a roadmap (uses the packaged default template)
+chenin synthesis data/NOIR24-01/NOIR24-01-Roadmap.csv                  # print the table
+chenin synthesis data/NOIR24-01/NOIR24-01-Roadmap.csv -o synthesis.csv # export it
+chenin synthesis roadmap.csv --template my_template.csv                # custom columns
 
 # 3. Launch the web app (recommended for day-to-day use)
 chenin app
 ```
 
-`chenin app` opens the Streamlit interface in your browser: import a build file once
-in the sidebar, then browse the extracted reports and the synthesis, with a
+`chenin app` opens the Streamlit interface in your browser: load a roadmap once on the
+**Roadmap** page, then browse the extracted reports and the synthesis, with a
 sediment-core view and per-nuclide depth profiles.
 
 > The bare form `chenin report.txt` still works as a shortcut for
 > `chenin extract report.txt`.
 
-## The build file
+## The roadmap
 
-A build file is the single input that drives Chenin. It lists the core's samples
-(report file + layer depths, which are *not* in the G2K reports) and the synthesis
-format (which nuclides, which columns):
+The roadmap is the single input you write: one row per sample, listing its report
+file and its layer depths (which are *not* in the G2K reports). It is an ordinary
+spreadsheet — edit it in Excel/LibreOffice and save as `.csv` or `.xlsx`. Report files
+sit next to the roadmap. A cell left empty in `G2K Report` keeps a planned-but-
+unmeasured layer as a depth-only row.
 
-```toml
-title = "NOI_S core"
-base_path = "./data/NOI_S"      # where the report files live
-
-[[samples]]                     # one entry per report, in core order (depths in cm)
-name = "NOI_S_1.txt"
-depth_top = 0.0
-depth_bot = 0.5
-
-[[samples]]
-name = "NOI_S_2.txt"
-depth_top = 0.5
-depth_bot = 1.0
-
-[nuclides.pb210]                # a measurement source: one or more gamma peaks
-peaks = [{ nuclide = "PB-210", energy = 46.54 }]
-
-[nuclides.ra226]                # several peaks → inverse-variance weighted mean
-peaks = [
-  { nuclide = "PB-214", energy = 295.21 },
-  { nuclide = "BI-214", energy = 609.31 },
-]
-
-[columns.pb210]                 # a synthesis column reading a nuclide directly
-name = "PB-210"
-source = "pb210"
-
-[columns.pbexc]                 # or computed from a formula over nuclide keys
-name = "PB-Exc"
-formula = "pb210 - ra226"
+```csv
+LSM Code, Sample Code, Depth Top, Depth Bot, DBD, G2K Report
+NOIR24-01, NOI24-01-1, 0.0, 0.5, 0, NOI_S_1.txt
+NOIR24-01, NOI24-01-2, 0.5, 1.0, 0, NOI_S_2.txt
+NOIR24-01, NOI24-01-3, 1.0, 1.5, 0,
 ```
 
-You don't have to write TOML by hand — the **Build file** page in the web app is a
-form-based editor that validates as you type and exports a ready-to-use build file.
+Which nuclides land in the synthesis comes from a **synthesis template**: a compact
+table whose header row names the output columns and whose single method row says how
+to obtain each one — gamma peaks (`NUCLIDE@energy`, `;`-separated for a weighted mean)
+or an `=` formula over other columns:
+
+```csv
+PB-210,       RA-226,                                          PB-Exc,             K-40
+PB-210@46.54, PB-214@295.21; PB-214@351.92; BI-214@609.31,     =[PB-210] - [RA-226], K-40@1460.82
+```
+
+The standard EDYTEM-PTAL template ships with Chenin and is applied automatically, so
+most cores need only a roadmap. Pass `--template my_template.csv` (or upload one on the
+Roadmap page) to override it.
 
 See [`docs/user-guide.md`](docs/user-guide.md) for the full walkthrough, and
-[`docs/synthesis.md`](docs/synthesis.md) for the complete build-file schema.
+[`docs/synthesis.md`](docs/synthesis.md) for the complete roadmap and template schema.
 
 ## Documentation
 
 | Document | For | Content |
 |---|---|---|
-| [`docs/user-guide.md`](docs/user-guide.md) | Users | End-to-end workflow: install → build file → reports → synthesis → export. |
-| [`docs/synthesis.md`](docs/synthesis.md) | Users / power users | Full build-file schema, nuclides, columns, formulas, output columns. |
+| [`docs/user-guide.md`](docs/user-guide.md) | Users | End-to-end workflow: install → roadmap → reports → synthesis → export. |
+| [`docs/synthesis.md`](docs/synthesis.md) | Users / power users | Full roadmap + synthesis-template schema, peaks, formulas, output columns. |
 | [`docs/measurement.md`](docs/measurement.md) | Curious users / devs | The `Measurement` value object and uncertainty propagation. |
 | [`CLAUDE.md`](CLAUDE.md) | Contributors | Architecture, conventions, section layout. |
 
@@ -123,7 +114,7 @@ See [`docs/user-guide.md`](docs/user-guide.md) for the full walkthrough, and
 ```
 src/chenin/
 ├── g2k_parser/     # parsing library: G2K report -> {section: DataFrame}
-├── synthesis/      # build-file model, report loading, synthesis builder
+├── synthesis/      # roadmap/template model, report loading, synthesis builder
 ├── ui/             # Streamlit app (pages, components, shared state)
 └── cli.py          # `chenin` command (extract / synthesis / app)
 docs/               # user and reference documentation

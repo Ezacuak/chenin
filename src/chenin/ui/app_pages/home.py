@@ -18,15 +18,12 @@ config = state.get_build_config()
 step1, step2, step3 = st.columns(3, border=True)
 
 with step1:
-    st.markdown("##### :material/tune: 1. Build file")
-    st.markdown(
-        "A build file lists the core's samples (report + layer depths) and the "
-        "synthesis format (nuclides, columns)."
-    )
+    st.markdown("##### :material/tune: 1. Roadmap file")
+    st.markdown("A roadmap file lists the core's samples (metadata + report file)")
     if config is None:
         st.caption(":material/radio_button_unchecked: Not loaded yet")
         if st.button("Create one", key="home_to_editor"):
-            st.switch_page(str(Path(__file__).parent / "build_editor.py"))
+            st.switch_page(str(Path(__file__).parent / "roadmap.py"))
     else:
         st.caption(f":material/check_circle: “{config.title}” loaded")
 
@@ -40,7 +37,7 @@ with step2:
     if reports:
         st.caption(f":material/check_circle: {len(reports)} report(s) loaded")
     else:
-        st.caption(":material/radio_button_unchecked: Waiting on a build file")
+        st.caption(":material/radio_button_unchecked: Waiting on a roadmap file")
 
 with step3:
     st.markdown("##### :material/insights: 3. Synthesis")
@@ -53,20 +50,3 @@ with step3:
         st.caption(f":material/check_circle: {len(synthesis)} row(s) built")
     else:
         st.caption(":material/radio_button_unchecked: Not built yet")
-
-st.divider()
-
-with st.expander("What is a Génie 2000 report?", icon=":material/help:"):
-    st.markdown(
-        "A plain-text export from the Canberra/Mirion **Génie 2000** gamma spectrometry "
-        "software, split into six sections: spectrum metadata, peak analysis, nuclide "
-        "identification, interference-corrected identification, and two detection-limit "
-        "reports. Chenin parses all six into tables."
-    )
-
-with st.expander("Where does depth come from?", icon=":material/help:"):
-    st.markdown(
-        "G2K reports don't carry sample depth — it's field data. The build file's "
-        "`[[samples]]` list supplies `depth_top`/`depth_bot` (cm) for each report, in "
-        "core order."
-    )

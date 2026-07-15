@@ -1,5 +1,3 @@
-"""Sidebar build-file loader, shared by every page via the app-level entry point."""
-
 from pathlib import Path
 
 import streamlit as st
@@ -25,28 +23,27 @@ def load_build_config(config: BuildConfig, base_dir: Path | None = None) -> bool
 
 
 def render_build_sidebar() -> None:
-    """Sidebar section for loading the build file that drives the whole app."""
+    """Sidebar section for loading the roadmap that drives the whole app."""
     with st.sidebar:
-        st.subheader("Build file", anchor=False)
-        build_file = st.file_uploader(
-            "Import a build file (.toml)",
-            type=["toml"],
+        st.subheader("Roadmap", anchor=False)
+        roadmap_file = st.file_uploader(
+            "Import a roadmap (.csv / .xlsx)",
+            type=["csv", "xlsx", "xls"],
             accept_multiple_files=False,
             help=(
-                "The build file lists the samples (report + layer depths) and the "
-                "synthesis format. Create one on the Build file page, or write it by hand — "
-                "see the documentation for the schema."
+                "The roadmap lists the core's samples (report file + layer depths). "
+                "The standard synthesis template is applied automatically."
             ),
         )
 
-        if build_file is not None:
+        if roadmap_file is not None:
             # Only (re)load when a new file is dropped.
-            file_key = (build_file.name, build_file.size)
+            file_key = (roadmap_file.name, roadmap_file.size)
             if st.session_state.get("_build_file_key") != file_key:
                 try:
-                    config = BuildConfig.from_toml(build_file)
+                    config = BuildConfig.from_roadmap(roadmap_file)
                 except (ValueError, KeyError) as e:
-                    st.error(f"Invalid build file: {e}")
+                    st.error(f"Invalid roadmap: {e}")
                 else:
                     if load_build_config(config):
                         st.session_state["_build_file_key"] = file_key
@@ -55,4 +52,4 @@ def render_build_sidebar() -> None:
         if config is not None:
             st.success(f"{len(config.samples)} sample(s) loaded — “{config.title}”")
         else:
-            st.caption("No build file loaded yet.")
+            st.caption("No roadmap loaded yet.")

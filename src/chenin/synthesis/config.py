@@ -1,15 +1,33 @@
-"""Build-file model: parsing, validation and serialisation of the TOML build file.
+"""Build model: parse and validate the synthesis inputs.
 
-A build file is the single entry point of a synthesis: it references the ordered
-sample list (report file + layer depths, data absent from the G2K reports) and the
-synthesis format (nuclides and columns).
+A synthesis is driven by two scientist-friendly tables:
+
+- a **roadmap** CSV/Excel (per core) — the ordered sample list (report file +
+  layer depths + density), the data absent from the G2K reports;
+- a **synthesis template** CSV — a compact *wide* table whose header row gives the
+  output column names and whose single second row gives each column's method
+  (gamma peaks or an arithmetic formula). A lab default ships with the package.
+
+Both are parsed into the same validated :class:`BuildConfig`; everything
+downstream depends only on that object, not on the input format.
 """
 
-import tomllib
+import re
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, fields
+from importlib import resources
 from pathlib import Path
 from typing import IO
+
+import pandas as pd
+
+# --- Roadmap column headers (as written by scientists) --- #
+RM_CORE = "LSM Code"
+RM_SAMPLE = "Sample Code"
+RM_TOP = "Depth Top"
+RM_BOT = "Depth Bot"
+RM_DBD = "DBD"
+RM_REPORT = "G2K Report"
 
 
 @dataclass(frozen=True)
@@ -51,12 +69,15 @@ class SampleSpec:
     """One sediment sample: a report file plus its layer geometry (cm).
 
     ``depth_top``/``depth_bot`` are the missing data source — they are not present in
-    the G2K report and must come from the build file.
+    the G2K report and must come from the roadmap. ``name`` (the report file) may be
+    ``None`` for a planned-but-unmeasured layer, kept as a depth-only row.
     """
 
-    name: str
+    name: str | None
     depth_top: float
     depth_bot: float
+    sample_code: str | None = None
+    dbd: float | None = None
 
 
 @dataclass(frozen=True)
@@ -75,7 +96,7 @@ class MetadataSpec:
 
 @dataclass(frozen=True)
 class BuildConfig(Mapping):
-    """A validated build configuration: samples + synthesis format in one file."""
+    """A validated build configuration: samples + synthesis format."""
 
     title: str
     description: str | None
@@ -98,13 +119,30 @@ class BuildConfig(Mapping):
         return len(fields(self))
 
     @classmethod
-    def from_toml(cls, file: str | Path | IO[bytes]) -> BuildConfig:
-        """Load and validate a configuration from a TOML path or binary file object."""
-        if isinstance(file, (str, Path)):
-            with open(file, "rb") as f:
-                raw = tomllib.load(f)
+    def from_roadmap(
+        cls,
+        roadmap: str | Path | IO,
+        template: str | Path | IO | None = None,
+    ) -> BuildConfig:
+        """Build a configuration from a roadmap file and a synthesis template.
+
+        ``roadmap`` is a CSV/Excel sample list; ``template`` is a wide synthesis
+        template CSV — when ``None`` the packaged lab default is used.
+        """
+        samples, core_id = parse_roadmap(roadmap)
+        if template is None:
+            ref = resources.files("chenin.synthesis") / "default_template.csv"
+            with resources.as_file(ref) as default_path:
+                nuclides, columns = parse_template(default_path)
         else:
-            raw = tomllib.load(file)
+            nuclides, columns = parse_template(template)
+
+        raw = {
+            "title": core_id or "Synthesis",
+            "samples": samples,
+            "nuclides": nuclides,
+            "columns": columns,
+        }
         return cls.from_dict(raw)
 
     @classmethod
@@ -120,12 +158,12 @@ class BuildConfig(Mapping):
 
         nuclides_raw = raw.get("nuclides", {})
         if not nuclides_raw:
-            raise ValueError("config has no [nuclides.*] entries")
+            raise ValueError("config has no nuclide sources")
         nuclides = {key: _parse_nuclide(key, spec) for key, spec in nuclides_raw.items()}
 
         columns_raw = raw.get("columns", {})
         if not columns_raw:
-            raise ValueError("config has no [columns.*] entries")
+            raise ValueError("config has no output columns")
         columns = [_parse_column(key, spec, nuclides) for key, spec in columns_raw.items()]
 
         return cls(
@@ -138,57 +176,157 @@ class BuildConfig(Mapping):
             columns=columns,
         )
 
-    def to_toml(self) -> str:
-        """Serialise back to a build-file TOML string (round-trips ``from_toml``)."""
-        lines = [f"title = {_toml_str(self.title)}"]
-        if self.description:
-            lines.append(f"description = {_toml_str(self.description)}")
-        if self.base_path:
-            lines.append(f"base_path = {_toml_str(self.base_path)}")
 
-        for sample in self.samples:
-            lines += [
-                "",
-                "[[samples]]",
-                f"name = {_toml_str(sample.name)}",
-                f"depth_top = {sample.depth_top}",
-                f"depth_bot = {sample.depth_bot}",
-            ]
+# --- Roadmap parsing --- #
 
-        meta_items = [
-            (key, getattr(self.metadata, key))
-            for key in ("base_year", "taux_sedimentation", "coring_yr")
-            if getattr(self.metadata, key) is not None
-        ]
-        if meta_items:
-            lines += ["", "[metadata]"]
-            lines += [f"{key} = {value}" for key, value in meta_items]
 
-        for key, nuclide in self.nuclides.items():
-            peaks = ", ".join(
-                f"{{ nuclide = {_toml_str(p.nuclide)}, energy = {p.energy} }}"
-                for p in nuclide.peaks
-            )
-            lines += ["", f"[nuclides.{key}]", f"peaks = [{peaks}]"]
+def parse_roadmap(file: str | Path | IO) -> tuple[list[dict], str | None]:
+    """Read a roadmap CSV/Excel into sample dicts and the core id.
 
-        for column in self.columns:
-            lines += ["", f"[columns.{column.key}]", f"name = {_toml_str(column.name)}"]
-            if column.source is not None:
-                lines.append(f"source = {_toml_str(column.source)}")
-            else:
-                lines.append(f"formula = {_toml_str(column.formula)}")
+    Rows with an empty ``G2K Report`` are kept with ``name=None`` (depth-only).
+    """
+    df = _read_table(file, skipinitialspace=True)
+    _require_columns(df, [RM_TOP, RM_BOT])
 
-        return "\n".join(lines) + "\n"
+    samples: list[dict] = []
+    for row in df.to_dict("records"):
+        top = _cell_float(row.get(RM_TOP))
+        bot = _cell_float(row.get(RM_BOT))
+        if top is None and bot is None:
+            continue  # blank trailing line
+        samples.append(
+            {
+                "name": _cell_str(row.get(RM_REPORT)) or None,
+                "depth_top": top,
+                "depth_bot": bot,
+                "sample_code": _cell_str(row.get(RM_SAMPLE)) or None,
+                "dbd": _cell_float(row.get(RM_DBD)),
+            }
+        )
+
+    core_id = None
+    if RM_CORE in df.columns and len(df):
+        core_id = _cell_str(df[RM_CORE].iloc[0]) or None
+
+    return samples, core_id
+
+
+# --- Template parsing --- #
+
+_PEAK_SEP = ";"
+_REF_PATTERN = re.compile(r"\[([^\]]+)\]")
+
+
+def parse_template(file: str | Path | IO) -> tuple[dict[str, dict], dict[str, dict]]:
+    """Read a wide synthesis template into ``(nuclides, columns)`` raw dicts.
+
+    The header row holds display names; the single second row holds each column's
+    method: gamma peaks (``NUCLIDE@energy``, ``;``-separated for a weighted mean) or
+    an ``=`` formula over other columns referenced as ``[Name]``.
+    """
+    df = _read_table(file)
+    if df.empty:
+        raise ValueError("synthesis template has no method row")
+    method_row = df.iloc[0]
+
+    nuclides: dict[str, dict] = {}
+    columns: dict[str, dict] = {}
+    for name in df.columns:
+        display = str(name).strip()
+        if not display or display.lower().startswith("unnamed"):
+            continue
+        method = _cell_str(method_row[name])
+        if not method:
+            raise ValueError(f"column '{display}' has no method")
+
+        key = _slug(display)
+        if method.startswith("="):
+            formula = _REF_PATTERN.sub(lambda m: _slug(m.group(1)), method[1:].strip())
+            columns[key] = {"name": display, "formula": formula}
+        else:
+            nuclides[key] = {"peaks": _parse_peaks(display, method)}
+            columns[key] = {"name": display, "source": key}
+
+    if not nuclides:
+        raise ValueError("synthesis template has no measured (peak) columns")
+    return nuclides, columns
+
+
+def _parse_peaks(display: str, method: str) -> list[dict]:
+    peaks: list[dict] = []
+    for item in method.split(_PEAK_SEP):
+        item = item.strip()
+        if not item:
+            continue
+        if "@" not in item:
+            raise ValueError(f"column '{display}': peak '{item}' must be NUCLIDE@energy")
+        nuclide, _, energy = item.partition("@")
+        try:
+            peaks.append({"nuclide": nuclide.strip(), "energy": float(energy)})
+        except ValueError:
+            raise ValueError(
+                f"column '{display}': peak '{item}' has an invalid energy"
+            ) from None
+    if not peaks:
+        raise ValueError(f"column '{display}' has no peaks")
+    return peaks
+
+
+# --- Shared helpers --- #
+
+
+def _read_table(file: str | Path | IO, *, skipinitialspace: bool = False) -> pd.DataFrame:
+    """Read a CSV or Excel table as strings, choosing the reader by extension."""
+    name = str(getattr(file, "name", file) or "").lower()
+    if name.endswith((".xlsx", ".xls")):
+        df = pd.read_excel(file, dtype=str)
+    else:
+        df = pd.read_csv(file, dtype=str, skipinitialspace=skipinitialspace)
+    df.columns = [str(c).strip() for c in df.columns]
+    return df
+
+
+def _require_columns(df: pd.DataFrame, required: list[str]) -> None:
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"roadmap is missing column(s): {', '.join(missing)}")
+
+
+def _cell_str(value) -> str:
+    """Coerce a cell to a stripped string, treating NaN/None as empty."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+def _cell_float(value) -> float | None:
+    """Coerce a cell to float, treating missing/blank/NaN as None."""
+    text = _cell_str(value)
+    if not text:
+        return None
+    try:
+        return float(text.replace(",", "."))
+    except ValueError:
+        return None
+
+
+def _slug(name: str) -> str:
+    """Turn a display name into a valid identifier key (e.g. 'PB-210' -> 'pb_210')."""
+    s = re.sub(r"[^0-9a-zA-Z]+", "_", name.strip().lower()).strip("_")
+    if not s:
+        s = "col"
+    if s[0].isdigit():
+        s = "_" + s
+    return s
 
 
 def _opt_float(value) -> float | None:
-    """Coerce an optional TOML number to float (TOML ints stay int otherwise)."""
+    """Coerce an optional number to float."""
     return None if value is None else float(value)
-
-
-def _toml_str(value: str) -> str:
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
 
 
 def _require_identifier(kind: str, key: str) -> None:
@@ -199,21 +337,24 @@ def _require_identifier(kind: str, key: str) -> None:
 
 def _parse_sample(spec: dict) -> SampleSpec:
     """Validate and build a single SampleSpec, raising clear errors."""
-    name = spec.get("name")
-    if not name:
-        raise ValueError("a sample is missing its 'name'")
     for field in ("depth_top", "depth_bot"):
-        if field not in spec:
-            raise ValueError(f"sample '{name}' is missing '{field}'")
+        if spec.get(field) is None:
+            raise ValueError(f"a sample is missing '{field}'")
 
     depth_top = float(spec["depth_top"])
     depth_bot = float(spec["depth_bot"])
     if depth_bot < depth_top:
         raise ValueError(
-            f"sample '{name}' has depth_bot ({depth_bot}) < depth_top ({depth_top})"
+            f"sample at depth {depth_top} has depth_bot ({depth_bot}) < depth_top ({depth_top})"
         )
 
-    return SampleSpec(name=name, depth_top=depth_top, depth_bot=depth_bot)
+    return SampleSpec(
+        name=spec.get("name") or None,
+        depth_top=depth_top,
+        depth_bot=depth_bot,
+        sample_code=spec.get("sample_code") or None,
+        dbd=_opt_float(spec.get("dbd")),
+    )
 
 
 def _parse_nuclide(key: str, spec: dict) -> NuclideSpec:

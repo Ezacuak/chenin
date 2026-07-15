@@ -1,27 +1,26 @@
-# Fichier build & synthèse — module `synthesis`
+# Roadmap & synthèse — module `synthesis`
 
-Le module `src/synthesis/` construit une **synthèse** à partir de plusieurs rapports Génie 2000 :
-un `DataFrame` avec **une ligne par échantillon** et, pour chaque nucléide configuré, une colonne
-d'activité et une colonne d'incertitude.
+Le module `src/chenin/synthesis/` construit une **synthèse** à partir de plusieurs rapports
+Génie 2000 : un `DataFrame` avec **une ligne par échantillon** et, pour chaque colonne configurée,
+une valeur d'activité et une valeur d'incertitude.
 
-Tout est piloté par un **unique fichier build TOML** qui référence à la fois :
+Deux entrées, toutes deux des tableurs ordinaires (`.csv`/`.xlsx`) :
 
-1. la **liste ordonnée des échantillons** — chaque rapport avec sa géométrie de couche
-   (`depth_top`, `depth_bot`), *données absentes des rapports G2K eux-mêmes* ;
-2. le **format de synthèse** — nucléides et colonnes.
+1. la **roadmap** — la **liste ordonnée des échantillons** : chaque rapport avec sa géométrie de
+   couche (`Depth Top`, `Depth Bot`) et sa densité (`DBD`), *données absentes des rapports G2K
+   eux-mêmes* ;
+2. le **template de synthèse** — le **format** : quelles colonnes de sortie et comment les obtenir.
+   Un template par défaut est livré avec Chenin ; dans le cas courant, seule la roadmap est écrite.
 
-Le code décide *comment* lire les données ; le fichier build décide *quoi* extraire et *sur quels
-échantillons*.
+Le code décide *comment* lire les données ; la roadmap et le template décident *quoi* extraire et
+*sur quels échantillons*.
 
 ## Sommaire
 
 - [Principe](#principe)
-- [Format du fichier build TOML](#format-du-fichier-build-toml)
-  - [En-tête et `base_path`](#en-tête-et-base_path)
-  - [`[[samples]]` — échantillons](#samples--échantillons)
-  - [`[metadata]`](#metadata)
-  - [`[nuclides.*]` — sources de mesure](#nuclides--sources-de-mesure)
-  - [`[columns.*]` — colonnes affichées](#columns--colonnes-affichées)
+- [La roadmap](#la-roadmap)
+- [Le template de synthèse](#le-template-de-synthèse)
+  - [Raies gamma](#raies-gamma)
   - [Formules](#formules)
 - [Utilisation](#utilisation)
 - [Colonnes de sortie](#colonnes-de-sortie)
@@ -31,156 +30,86 @@ Le code décide *comment* lire les données ; le fichier build décide *quoi* ex
 
 ## Principe
 
-La synthèse se construit en niveaux, volontairement séparés :
-
-1. **Les échantillons** (`[[samples]]`) lient chaque **fichier rapport** à sa **profondeur**
-   (`depth_top`/`depth_bot`, en cm). Ils sont chargés dans l'ordre du fichier.
-
-2. **Les nucléides** (`[nuclides.*]`) décrivent *comment lire une activité* depuis la section 3
-   d'un rapport : un nucléide est une ou plusieurs **raies gamma** (nucléide + énergie). Avec
-   plusieurs raies, l'activité est leur **moyenne pondérée inverse-variance**. Un nucléide est
-   défini **une fois** puis réutilisable par plusieurs colonnes ou formules.
-
-3. **Les colonnes** (`[columns.*]`) décrivent *ce qui est affiché*, dans l'ordre du fichier. Une
-   colonne lit soit directement une source de nucléide (`source`), soit le résultat d'une
-   **formule arithmétique** sur d'autres nucléides (`formula`).
-
 ```
-fichier build ──▶ [[samples]] ──▶ rapports G2K ──▶ section 3 ──▶ [nuclides.*] ──▶ [columns.*] ──▶ DataFrame
-                  (+ profondeurs)                   (raies)       (mesures)        (affichage)
+roadmap ─────▶ échantillons ──▶ rapports G2K ──▶ section 3 ─┐
+(+ profondeurs, DBD)            (raies)                     ├─▶ DataFrame
+template ────▶ colonnes ────────────────────────────────────┘
+(raies | formule)
 ```
 
-## Format du fichier build TOML
+1. **La roadmap** lie chaque **fichier rapport** à sa **profondeur** (`Depth Top`/`Depth Bot`, en
+   cm). Les échantillons sont chargés dans l'ordre du fichier. Une ligne sans rapport reste une
+   **ligne « profondeur seule »** (activités `NaN`).
 
-Exemple (racine `NOI_S_Builder.toml`) :
+2. **Le template** décrit chaque **colonne de sortie**. Une colonne est soit une **mesure directe**
+   (une ou plusieurs raies gamma lues en section 3), soit une **formule arithmétique** sur d'autres
+   colonnes. Avec plusieurs raies, l'activité est leur **moyenne pondérée inverse-variance**.
 
-```toml
-title = "Synthèse NOI_S"
-description = "Rapports G2K (échantillons + profondeurs) et format de synthèse"
-version = 1.0
-base_path = "./data/NOI_S"
+## La roadmap
 
-# --- Échantillons : liste ORDONNÉE, avec la géométrie de couche (cm) --- #
-[[samples]]
-name = "NOI_S_1.txt"
-depth_top = 0.0
-depth_bot = 0.5
+Un CSV (séparateur `,`) ou un classeur Excel. Les rapports sont cherchés **à côté de la roadmap**
+(ou dans le dossier indiqué à l'app). Colonnes attendues (repérées par leur nom, l'ordre et les
+espaces autour importent peu) :
 
-[[samples]]
-name = "NOI_S_2.txt"
-depth_top = 0.5
-depth_bot = 1.0
-
-# --- Métadonnées (niveau carotte) --- #
-[metadata]
-base_year = 2018             # année de l'échantillon de surface (calcul de l'âge)
-taux_sedimentation = 0.2246  # cm/an (constante fournie, dérivée en externe pour l'instant)
-
-# --- Nucléides : sources de mesure réutilisables (toujours des raies avec énergie) --- #
-[nuclides.pb210]
-peaks = [{ nuclide = "PB-210", energy = 46.54 }]
-
-[nuclides.ra226]                # estimé via ses filles à l'équilibre séculaire
-peaks = [
-  { nuclide = "PB-214", energy = 295.21 },
-  { nuclide = "PB-214", energy = 351.92 },
-  { nuclide = "BI-214", energy = 609.31 },
-]
-
-# --- Colonnes : ce qui est affiché, dans l'ordre du fichier --- #
-[columns.pb210]
-name = "PB-210"
-source = "pb210"
-
-[columns.pbexc]
-name = "PB-Exc"
-formula = "pb210 - ra226"       # arithmétique sur les clés de nucléide
+```csv
+LSM Code, Sample Code, Depth Top, Depth Bot, DBD, G2K Report
+NOIR24-01, NOI24-01-1, 0.0, 0.5, 0, NOI_S_1.txt
+NOIR24-01, NOI24-01-2, 0.5, 1.0, 0, NOI_S_2.txt
+NOIR24-01, NOI24-01-3, 1.0, 1.5, 0,
 ```
 
-### En-tête et `base_path`
+| Colonne | Rôle |
+|---|---|
+| `LSM Code` | Identifiant de la carotte (devient le titre de la synthèse). |
+| `Sample Code` | Identifiant lisible de l'échantillon (colonne `Echantillon` en sortie). |
+| `Depth Top` | Profondeur du sommet de la couche (cm). |
+| `Depth Bot` | Profondeur du fond de la couche (cm), `>= Depth Top`. |
+| `DBD` | Densité sèche apparente (*dry bulk density*), reportée telle quelle. |
+| `G2K Report` | Nom du fichier rapport. **Vide** → couche planifiée mais non mesurée (ligne profondeur seule). |
 
-| Clé | Type | Rôle |
-|---|---|---|
-| `title` | str | Titre de la synthèse (par défaut `"Synthese"`). |
-| `base_path` | str | Dossier des rapports. Résolu **relativement au fichier build** (CLI) ou au **dossier de travail du serveur** (Streamlit). |
+## Le template de synthèse
 
-Les clés top-level inconnues (`version`, `author`, `description`, …) sont **ignorées** sans erreur.
+Un CSV **large** : la première ligne donne les **noms des colonnes** de sortie, la seconde ligne
+donne la **méthode** de chaque colonne.
 
-### `[[samples]]` — échantillons
-
-Tableau ordonné (`array-of-tables`). Chaque entrée lie un rapport à sa couche :
-
-| Champ | Type | Rôle |
-|---|---|---|
-| `name` | str | Nom du fichier rapport, résolu sous `base_path`. |
-| `depth_top` | float | Profondeur du sommet de la couche (cm). |
-| `depth_bot` | float | Profondeur du fond de la couche (cm), `>= depth_top`. |
-
-`samples` peut être vide (le fichier reste un « format seul » valide, utile pour tester une config).
-
-### `[metadata]`
-
-| Clé | Type | Rôle |
-|---|---|---|
-| `metadata.base_year` | float | Année de l'échantillon de surface, base du calcul d'âge. |
-| `metadata.taux_sedimentation` | float | Taux de sédimentation (cm/an). |
-
-> L'épaisseur n'est **plus** une métadonnée globale : elle est dérivée par échantillon
-> (`depth_bot − depth_top`).
-
-### `[nuclides.*]` — sources de mesure
-
-Chaque table `[nuclides.<clé>]` définit une source réutilisable. La `<clé>` doit être un
-**identifiant valide** (lettres, chiffres, `_` ; pas de tiret) car elle est référençable dans les
-formules.
-
-```toml
-[nuclides.ra226]
-peaks = [
-  { nuclide = "PB-214", energy = 295.21 },
-  { nuclide = "PB-214", energy = 351.92 },
-  { nuclide = "BI-214", energy = 609.31 },
-]
+```csv
+PB-210,       RA-226,                                       PB-Exc,               K-40
+PB-210@46.54, PB-214@295.21; PB-214@351.92; BI-214@609.31,  =[PB-210] - [RA-226],  K-40@1460.82
 ```
 
-- `peaks` : liste **non vide** de raies. Chaque raie a obligatoirement `nuclide` (le nom tel qu'il
-  apparaît en section 3, ex. `"PB-214"`) **et** `energy` (keV).
-- Avec une seule raie → activité de cette raie.
-- Avec plusieurs raies → **moyenne pondérée inverse-variance** (le standard scientifique pour
-  combiner plusieurs lignes gamma, et ce que Génie 2000 reporte comme activité moyenne pondérée).
+Le template par défaut (`PB-210, RA-226, PB-Exc, AM-241, CS-137, K-40`) est empaqueté dans
+`chenin/synthesis/default_template.csv` et appliqué automatiquement. En fournir un remplace le
+défaut (`--template` en CLI, ou l'upload « template personnalisé » sur la page Roadmap).
+
+### Raies gamma
+
+Une cellule sans `=` décrit une **mesure directe** sous forme de raies :
+
+- `PB-210@46.54` — une seule raie (`NUCLEIDE@énergie`, énergie en keV).
+- `PB-214@295.21; PB-214@351.92; BI-214@609.31` — plusieurs raies séparées par `;` → **moyenne
+  pondérée inverse-variance** (standard pour combiner plusieurs lignes gamma).
 - Les raies peuvent appartenir à des nucléides **différents** : c'est le cas de `RA-226`, non
   mesurable directement, estimé via ses filles (`PB-214`, `BI-214`) à l'équilibre séculaire.
 
-La raie est appariée à la ligne de section 3 dont l'énergie est la **plus proche**, dans une
+Chaque raie est appariée à la ligne de section 3 dont l'énergie est la **plus proche**, dans une
 **tolérance de 1 keV** (`ENERGY_TOLERANCE` dans `providers.py`). Au-delà, ou si l'activité est
 absente, la mesure est **manquante** (`NaN`).
 
-### `[columns.*]` — colonnes affichées
-
-Chaque table `[columns.<clé>]` produit une colonne de la synthèse, **dans l'ordre du fichier**. La
-`<clé>` doit aussi être un identifiant valide.
-
-Une colonne porte **exactement un** des deux champs suivants :
-
-| Champ | Effet |
-|---|---|
-| `source` | Lit directement la mesure du nucléide de clé donnée. |
-| `formula` | Évalue une expression arithmétique sur les clés de nucléide (voir ci-dessous). |
-
-`name` est obligatoire et sert d'en-tête (`Activite <name>`, `Incertitude <name>`).
-
 ### Formules
 
-```toml
-[columns.pbexc]
-name = "PB-Exc"
-formula = "pb210 - ra226"
+Une cellule commençant par `=` est une **formule** sur d'autres colonnes, référencées par leur nom
+entre crochets :
+
+```
+=[PB-210] - [RA-226]
 ```
 
 - Opérateurs autorisés : `+`, `-`, `*`, `/` (binaires et unaires), parenthèses, et constantes
-  numériques. Aucun appel de fonction, aucune autre construction (évaluation via un AST restreint).
-- Les noms référencent les **clés de `[nuclides.*]`** (ici `pb210` et `ra226`), pas les noms
-  d'affichage.
+  numériques. Aucun appel de fonction (évaluation par un AST restreint).
+- Les crochets `[...]` autorisent tirets et espaces dans les noms de colonnes ; en interne, chaque
+  nom est réduit à une clé identifiant (`PB-210` → `pb_210`).
+- Une formule référence des colonnes **de type mesure** (raies) ; référencer une autre formule
+  n'est pas supporté.
 - L'incertitude est **propagée automatiquement** (voir [propagation](#propagation-dincertitude)).
 
 ## Utilisation
@@ -188,19 +117,15 @@ formula = "pb210 - ra226"
 ### En ligne de commande
 
 ```sh
-chenin synthesis <build_file.toml>
+chenin synthesis <roadmap.csv>                       # template par défaut, table à l'écran
+chenin synthesis <roadmap.csv> -o synthese.csv       # export CSV
+chenin synthesis <roadmap.csv> --template <t.csv>    # colonnes personnalisées
 
-# Exemple sur le jeu NOI_S
-chenin synthesis NOI_S_Builder.toml
-
-# Export CSV
-chenin synthesis NOI_S_Builder.toml -o synthese.csv
+# Exemple sur le jeu NOIR24-01
+chenin synthesis data/NOIR24-01/NOIR24-01-Roadmap.csv
 ```
 
-Depuis un clone (au lieu de l'outil installé), préfixer par `uv run` :
-`uv run chenin synthesis NOI_S_Builder.toml`.
-
-Les rapports viennent du fichier build (`[[samples]]` + `base_path`) — inutile de les lister.
+Depuis un clone (au lieu de l'outil installé), préfixer par `uv run`.
 
 ### En Python
 
@@ -208,16 +133,16 @@ Les rapports viennent du fichier build (`[[samples]]` + `base_path`) — inutile
 from pathlib import Path
 from chenin.synthesis import BuildConfig, SynthesisBuilder, load_reports
 
-config = BuildConfig.from_toml("NOI_S_Builder.toml")
-reports = load_reports(config, Path("."))     # dict {name: Report}, lus sous base_path
-df = SynthesisBuilder(config).build(reports)  # une ligne par échantillon, dans l'ordre du build
+config = BuildConfig.from_roadmap("data/NOIR24-01/NOIR24-01-Roadmap.csv")  # template optionnel en 2e arg
+reports = load_reports(config, Path("data/NOIR24-01"))  # dict {name: Report}
+df = SynthesisBuilder(config).build(reports)             # une ligne par échantillon, dans l'ordre
 ```
 
 ### Dans Streamlit
 
-Lancer l'app avec `chenin app`. Le fichier build est importé **une seule fois** dans la barre
-latérale. Les pages « Reports » et « Synthesis » consomment ensuite l'état partagé
-(`state.get_build_config()`, `state.get_reports()`).
+Lancer l'app avec `chenin app`. La roadmap est chargée **une seule fois** sur la page « Roadmap »
+(avec le dossier des rapports). Les pages « Reports » et « Synthesis » consomment ensuite l'état
+partagé (`state.get_build_config()`, `state.get_reports()`).
 
 ## Colonnes de sortie
 
@@ -225,11 +150,12 @@ Pour chaque échantillon, la ligne produite contient :
 
 | Colonne | Source |
 |---|---|
-| `Profondeur` | `depth_top` de l'échantillon (cm). |
-| `Epaisseur` | `depth_bot − depth_top` (cm). |
-| `Activite <name>` | Valeur de chaque colonne configurée. |
-| `Incertitude <name>` | Incertitude (1 σ) de chaque colonne configurée. |
-| `Age` | `base_year − depth_top / taux_sedimentation` (`NaN` si métadonnées manquantes). |
+| `Echantillon` | `Sample Code` de la roadmap. |
+| `Profondeur` | `Depth Top` de l'échantillon (cm). |
+| `Epaisseur` | `Depth Bot − Depth Top` (cm). |
+| `DBD` | Densité sèche apparente de la roadmap. |
+| `Activite <name>` | Valeur de chaque colonne du template (`NaN` si pas de rapport). |
+| `Incertitude <name>` | Incertitude (1 σ) de chaque colonne (`NaN` si pas de rapport). |
 
 ## Propagation d'incertitude
 
@@ -245,51 +171,50 @@ Exemple : `PB-Exc = PB-210 − RA-226` avec `1224.40 ± 64.48` et `178.16 ± 6.2
 
 ## Erreurs de configuration
 
-La validation se fait au chargement (`BuildConfig.from_toml` / `from_dict`) et lève une
-`ValueError` explicite ; le chargement des rapports lève `FileNotFoundError` si un fichier manque.
+La validation se fait au chargement (`BuildConfig.from_roadmap` / `from_dict`) et lève une
+`ValueError` explicite ; le chargement des rapports lève `FileNotFoundError` si un fichier nommé
+manque.
 
 | Situation | Message |
 |---|---|
-| Échantillon sans `name` | `a sample is missing its 'name'` |
-| Échantillon sans `depth_top`/`depth_bot` | `sample '...' is missing 'depth_top'` |
-| `depth_bot < depth_top` | `sample '...' has depth_bot (...) < depth_top (...)` |
-| Rapport introuvable sous `base_path` | `rapport introuvable pour l'échantillon '...' : ...` |
-| Aucune table `[nuclides.*]` | `config has no [nuclides.*] entries` |
-| Aucune table `[columns.*]` | `config has no [columns.*] entries` |
-| Clé non-identifiant | `nuclide key '...' is not a valid identifier` |
-| `peaks` vide | `nuclide '...' needs a non-empty 'peaks'` |
-| Raie sans `energy` | `nuclide '...' has a peak missing 'energy'` |
-| Colonne sans `name` | `column '...' is missing a 'name'` |
-| Ni / les deux de `source`/`formula` | `column '...' must have exactly one of 'source' or 'formula'` |
-| `source` vers un nucléide inconnu | `column '...' references unknown nuclide '...'` |
-| Opérateur interdit dans une formule | `operator ... is not allowed` |
-| Nom inconnu dans une formule | `unknown nuclide '...' in formula` |
+| Colonne roadmap manquante | `roadmap is missing column(s): ...` |
+| Échantillon sans `Depth Top`/`Depth Bot` | `a sample is missing 'depth_top'` |
+| `Depth Bot < Depth Top` | `sample at depth ... has depth_bot (...) < depth_top (...)` |
+| Rapport nommé introuvable | `report not found for sample '...': ...` |
+| Template sans ligne méthode | `synthesis template has no method row` |
+| Colonne de template sans méthode | `column '...' has no method` |
+| Raie mal formée | `column '...': peak '...' must be NUCLIDE@energy` |
+| Énergie invalide | `column '...': peak '...' has an invalid energy` |
+| Template sans colonne mesurée | `synthesis template has no measured (peak) columns` |
 
 ## Architecture interne
 
 ```
 src/chenin/synthesis/
-├── __init__.py      # API : SynthesisBuilder, BuildConfig, SampleSpec, NuclideSpec, load_reports, Measurement
-├── config.py        # modèle + parsing/validation du TOML
-│   ├── SampleSpec       name + depth_top + depth_bot
-│   ├── Peak             nuclide + energy
-│   ├── NuclideSpec      key + liste de Peak
-│   ├── ColumnSpec       key + name + (source | formula)
-│   ├── MetadataSpec     base_year, taux_sedimentation
-│   └── BuildConfig      title + base_path + samples + metadata + nuclides + columns
-├── loader.py        # load_reports(config, base_dir) : construit un Report par échantillon depuis base_path
-├── measurement.py   # Measurement(value, uncertainty) + opérateurs + weighted_mean (voir measurement.md)
-├── providers.py     # lecture section 3 et évaluation des formules
+├── __init__.py            # API : SynthesisBuilder, BuildConfig, SampleSpec, NuclideSpec, load_reports, Measurement
+├── config.py              # modèle + parsing/validation (roadmap CSV/Excel + template large)
+│   ├── SampleSpec            name? + depth_top + depth_bot + sample_code? + dbd?
+│   ├── Peak                  nuclide + energy
+│   ├── NuclideSpec           key + liste de Peak
+│   ├── ColumnSpec            key + name + (source | formula)
+│   ├── MetadataSpec          base_year?, taux_sedimentation?, coring_yr?
+│   ├── BuildConfig           title + samples + metadata + nuclides + columns
+│   ├── parse_roadmap()       CSV/Excel -> échantillons + id de carotte
+│   └── parse_template()      CSV large -> nucléides + colonnes
+├── default_template.csv   # template EDYTEM-PTAL par défaut
+├── loader.py              # load_reports(config, base_dir) : un Report par échantillon mesuré
+├── measurement.py         # Measurement(value, uncertainty) + opérateurs + weighted_mean
+├── providers.py           # lecture section 3 et évaluation des formules
 │   ├── resolve_nuclide(s3, spec)        moyenne pondérée sur les raies
 │   ├── evaluate_formula(formula, ns)    évaluation AST restreinte
 │   └── _peak_measurement(...)           appariement raie ↔ ligne section 3 (tolérance 1 keV)
-└── builder.py       # SynthesisBuilder : résout les nucléides puis assemble une ligne par échantillon
+└── builder.py             # SynthesisBuilder : résout les nucléides puis assemble une ligne par échantillon
 ```
 
-**Flux** : `BuildConfig.from_toml()` (parse + valide) → `load_reports()` (lecture disque sous
-`base_path`) → `SynthesisBuilder(config).build(reports)` → pour chaque échantillon,
-`resolve_nuclide()` calcule toutes les sources une fois, puis chaque colonne lit sa `source` ou
-évalue sa `formula` → `DataFrame`.
+**Flux** : `BuildConfig.from_roadmap()` (parse roadmap + template → `from_dict`, valide) →
+`load_reports()` (lecture disque à côté de la roadmap) → `SynthesisBuilder(config).build(reports)` →
+pour chaque échantillon, `resolve_nuclide()` calcule toutes les sources une fois, puis chaque colonne
+lit sa `source` ou évalue sa `formula` → `DataFrame`.
 
 Les noms de colonnes de la section 3 (`Nom du nucleide`, `Energie (keV)`, `Activite (mBq/g)`,
 `Incert. (mBq/g)`) proviennent de `g2k_parser.columns`, source unique de vérité.

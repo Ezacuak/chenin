@@ -14,7 +14,7 @@ st.caption("Every extracted section of every loaded report.")
 reports = state.get_reports()
 
 if not reports:
-    st.info("Load a build file (.toml) in the sidebar to see its reports here.")
+    st.info("Load a roadmap on the Roadmap page to see its reports here.")
     st.stop()
 
 tabs = st.tabs(list(reports.keys()))

@@ -17,6 +17,7 @@ wheels/
 out/
 test/
 note.md
+*.todo
 
 
 # AI and Agents

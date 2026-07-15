@@ -7,8 +7,8 @@ No prior programming experience is required.
 - [Concepts](#concepts)
 - [Install](#install)
 - [Launch the app](#launch-the-app)
-- [Step 1 — Create a build file](#step-1--create-a-build-file)
-- [Step 2 — Load the build file](#step-2--load-the-build-file)
+- [Step 1 — Write a roadmap](#step-1--write-a-roadmap)
+- [Step 2 — Load the roadmap](#step-2--load-the-roadmap)
 - [Step 3 — Inspect the reports](#step-3--inspect-the-reports)
 - [Step 4 — Build and read the synthesis](#step-4--build-and-read-the-synthesis)
 - [Step 5 — Export](#step-5--export)
@@ -26,17 +26,19 @@ Four words cover everything Chenin does.
 - **Sample** — a report *plus its depth in the core*. The report tells you the
   activities; it does **not** know where in the core the sample came from — that's
   field data you provide.
-- **Build file** — a single `.toml` file that ties it all together: the ordered list
-  of samples (report + depths) and the synthesis format (which nuclides, which
-  columns). One build file describes one core.
+- **Roadmap** — a spreadsheet (`.csv` or `.xlsx`) that lists the core's samples: one
+  row per layer, with its report file, depths and density. One roadmap describes one
+  core. It's the single file you write.
 - **Synthesis** — the result: a table with **one row per sample**, each nuclide's
-  activity and uncertainty, and the depth. This is what you export.
+  activity and uncertainty, and the depth. This is what you export. Which nuclides
+  appear is set by a **synthesis template**; the standard one ships with Chenin, so you
+  usually don't touch it.
 
 The flow is always the same:
 
 ```
-reports (.txt)  +  depths        →  build file (.toml)  →  synthesis (table)
-                (you provide)         (one per core)         (one row per sample)
+reports (.txt)  +  depths        →  roadmap (.csv)  →  synthesis (table)
+                (you provide)        (one per core)      (one row per sample)
 ```
 
 ## Install
@@ -70,56 +72,56 @@ chenin app
 ```
 
 Your browser opens on the Chenin interface. The top bar has four pages —
-**Home**, **Build file**, **Reports**, **Synthesis** — and the sidebar (left) is where
-you load your build file. You'll work left to right through the pages.
+**Home**, **Roadmap**, **Reports**, **Synthesis** — and you work left to right through
+them, starting on **Roadmap** where you load your file.
 
 > Prefer the command line? Skip to
 > [Doing it from the command line](#doing-it-from-the-command-line). The app and the
-> CLI use the exact same build file and produce the exact same synthesis.
+> CLI use the exact same roadmap and produce the exact same synthesis.
 
-## Step 1 — Create a build file
+## Step 1 — Write a roadmap
 
-You have two options.
+A roadmap is an ordinary spreadsheet — edit it in Excel or LibreOffice and save as
+`.csv` or `.xlsx`. It has one row per sample and these columns:
 
-### Option A — the Build file editor (recommended)
+| Column | What to put |
+|---|---|
+| `LSM Code` | The core's identifier (e.g. `NOIR24-01`). Same on every row. |
+| `Sample Code` | A readable id for the sample (e.g. `NOI24-01-1`). |
+| `Depth Top` | Depth of the top of the layer, in centimetres. |
+| `Depth Bot` | Depth of the bottom of the layer, in centimetres. |
+| `DBD` | Dry bulk density (leave `0` if unknown for now). |
+| `G2K Report` | The report file name (e.g. `NOI_S_1.txt`). **Leave empty** for a planned but not-yet-measured layer. |
 
-Open the **Build file** page. It's a form, no TOML to write:
+```csv
+LSM Code, Sample Code, Depth Top, Depth Bot, DBD, G2K Report
+NOIR24-01, NOI24-01-1, 0.0, 0.5, 0, NOI_S_1.txt
+NOIR24-01, NOI24-01-2, 0.5, 1.0, 0, NOI_S_2.txt
+NOIR24-01, NOI24-01-3, 1.0, 1.5, 0,
+```
 
-1. **General** — give the core a *Title* and set the *Reports folder* (`base_path`):
-   the folder that contains your `.txt` reports. This path is relative to where you
-   launched `chenin app` (usually your project folder).
-2. **Samples** — one row per report, *in core order*. Type the report file name and
-   its `Depth top` / `Depth bottom` in centimetres. Use the **+** at the bottom of the
-   table to add rows.
-3. **Age model** *(optional)* — a base year and sedimentation rate produce an `Age`
-   column. Leave blank to omit it.
-4. **Nuclides** — one row per gamma peak. A nuclide is one or more peaks read from a
-   report's section 3. Give several peaks the **same key** to combine them as a
-   weighted mean (e.g. `RA-226` measured through its `PB-214`/`BI-214` daughters).
-5. **Columns** — what ends up in the synthesis, in order. For each column fill exactly
-   one of *Source* (a nuclide key from above) or *Formula* (arithmetic over nuclide
-   keys, e.g. `pb210 - ra226`).
+Keep the report files in the **same folder** as the roadmap. On the Roadmap page you
+can **download a blank roadmap template** to start from.
 
-As you edit, the **Preview & export** section validates the file. When it's valid you
-can either:
+That's all most cores need. The standard nuclide columns (PB-210, RA-226, PB-Exc,
+AM-241, CS-137, K-40) come from a built-in template. To change them, see the
+*custom synthesis template* section of [`synthesis.md`](synthesis.md#le-template-de-synthèse).
 
-- **Download build file** — save the `.toml` to disk for reuse, or
-- **Load into app** — use it right now (equivalent to loading it in the sidebar).
+## Step 2 — Load the roadmap
 
-### Option B — write the TOML by hand
+Open the **Roadmap** page:
 
-If you'd rather write the file in a text editor, the full schema (every key, every
-rule) is in [`synthesis.md`](synthesis.md). A minimal example is in the
-[README](../README.md#the-build-file). Save it as, say, `my_core.toml`.
+1. **Upload** your roadmap `.csv`/`.xlsx`.
+2. Set the **Reports folder** — the folder that holds the `.txt` reports (relative to
+   where you launched `chenin app`, or an absolute path).
+3. Check the preview table, then click **Load into app**.
 
-## Step 2 — Load the build file
-
-In the **sidebar**, use *Import a build file (.toml)* and pick your file. Chenin reads
-each report listed under `base_path` and shows how many samples were loaded. This is
-the single point of entry: every page reads from here.
+Chenin reads each report and shows how many samples were loaded. Rows with an empty
+`G2K Report` are kept as depth-only rows. This is the single point of entry: every
+other page reads from here.
 
 If a report can't be found, you'll get a clear error naming the missing file — check
-the file name in the build file and the `base_path` folder.
+the file name in the roadmap and the Reports folder.
 
 ## Step 3 — Inspect the reports
 
@@ -135,23 +137,23 @@ section — the synthesis itself is built on the next page.
 
 ## Step 4 — Build and read the synthesis
 
-Open the **Synthesis** page. Chenin builds the table from your build file and shows it
-in three parts:
+Open the **Synthesis** page. Chenin builds the table from your roadmap and shows it in
+several parts:
 
-- **Configuration** (collapsible) — a recap of the age model, nuclides and columns
-  Chenin used, so you can confirm the build file did what you meant.
-- **Core** — a vertical sediment-core view: each band is a sample from `depth_top` to
-  `depth_bot`, coloured by an activity you choose (the *Colour layers by* selector).
+- **Configuration** (collapsible) — a recap of the nuclides and columns Chenin used, so
+  you can confirm the template did what you meant.
+- **Core** — a vertical sediment-core view: each band is a sample from `Depth Top` to
+  `Depth Bot`, coloured by an activity you choose (the *Colour layers by* selector).
   Depth increases downward, like a real core. Hover a band for its depth and value.
 - **Profiles** — one small chart per nuclide: activity against depth, with 1σ error
   bars. This is the classic view for spotting the ²¹⁰Pb decrease or the ¹³⁷Cs peak.
 - **Table** — the full synthesis, with the same Table / Pivot / Filter modes as the
   Reports page.
 
-Each row has `Profondeur` (= `depth_top`), `Epaisseur` (= `depth_bot − depth_top`), an
-`Activite <name>` and `Incertitude <name>` per column, and an `Age` column if you
-configured an age model. Uncertainties are propagated automatically (see
-[`measurement.md`](measurement.md)).
+Each row has `Echantillon` (the sample code), `Profondeur` (= `Depth Top`), `Epaisseur`
+(= `Depth Bot − Depth Top`), `DBD`, and an `Activite <name>` / `Incertitude <name>`
+pair per column. Depth-only layers show their geometry with blank activities.
+Uncertainties are propagated automatically (see [`measurement.md`](measurement.md)).
 
 ## Step 5 — Export
 
@@ -172,24 +174,23 @@ chenin extract path/to/report.txt          # all sections
 chenin extract path/to/report.txt -s s3    # one section
 chenin extract path/to/report.txt -o out/  # each section to a CSV in out/
 
-# Build the synthesis from a build file
-chenin synthesis my_core.toml              # print it
-chenin synthesis my_core.toml -o out.csv   # export to CSV
+# Build the synthesis from a roadmap
+chenin synthesis my_core.csv               # print it (default template)
+chenin synthesis my_core.csv -o out.csv    # export to CSV
+chenin synthesis my_core.csv --template my_template.csv   # custom columns
 ```
 
-For `synthesis`, report paths come from the build file (`base_path` + `[[samples]]`),
-resolved relative to the build file's own folder — you don't list them on the command
-line.
+For `synthesis`, report paths come from the roadmap's `G2K Report` column, resolved
+next to the roadmap file — you don't list them on the command line.
 
 ## Troubleshooting
 
 | Symptom | Likely cause / fix |
 |---|---|
-| *"report not found for sample …"* | The file name in `[[samples]]` doesn't match a file under `base_path`, or `base_path` is wrong. Paths are relative to where you launched Chenin. |
-| *"Invalid build file: …"* | A validation error — the message names the problem (missing depth, unknown nuclide, a column with both `source` and `formula`, …). See the error table in [`synthesis.md`](synthesis.md#erreurs-de-configuration). |
-| A nuclide column is empty (NaN) | No section-3 peak matched within 1 keV of the configured energy, or the report doesn't report that nuclide. Check the energy and the nuclide name against the Reports page. |
-| The `Age` column is missing | The age model isn't configured — set both a base year and a sedimentation rate in the build file. |
+| *"report not found for sample …"* | The `G2K Report` name doesn't match a file in the Reports folder (CLI: next to the roadmap). Paths are relative to where you launched Chenin. |
+| *"Invalid roadmap: …"* | A validation error — the message names the problem (missing depth, malformed peak, a template column with no method, …). See the error table in [`synthesis.md`](synthesis.md#erreurs-de-configuration). |
+| A nuclide column is empty (NaN) | Either the row has no report (depth-only), or no section-3 peak matched within 1 keV of the template energy. Check the energy and nuclide name against the Reports page. |
 | `chenin: command not found` | The tool install didn't add `chenin` to PATH, or you're in a clone — use `uv run chenin ...` instead. |
 
-For the complete build-file reference, see [`synthesis.md`](synthesis.md). For how
-uncertainties are combined, see [`measurement.md`](measurement.md).
+For the complete roadmap and template reference, see [`synthesis.md`](synthesis.md). For
+how uncertainties are combined, see [`measurement.md`](measurement.md).

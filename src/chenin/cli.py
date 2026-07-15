@@ -32,11 +32,17 @@ def _add_extract_parser(subparsers):
 def _add_synthesis_parser(subparsers):
     p = subparsers.add_parser(
         "synthesis",
-        help="build a synthesis from a TOML build file",
+        help="build a synthesis from a roadmap file",
     )
     p.add_argument(
-        "build_file",
-        help="path to the TOML build file (samples + synthesis format)",
+        "roadmap",
+        help="path to the roadmap file (sample list, CSV or Excel)",
+    )
+    p.add_argument(
+        "--template",
+        "-t",
+        metavar="FILE",
+        help="synthesis template CSV (defaults to the packaged lab template)",
     )
     p.add_argument("--output", "-o", metavar="FILE", help="write the synthesis as CSV to FILE")
     p.set_defaults(func=_run_synthesis)
@@ -71,8 +77,8 @@ def _run_extract(args):
 
 
 def _run_synthesis(args):
-    config = BuildConfig.from_toml(args.build_file)
-    reports = load_reports(config, Path(args.build_file).parent)
+    config = BuildConfig.from_roadmap(args.roadmap, args.template)
+    reports = load_reports(config, Path(args.roadmap).parent)
     synthesis = SynthesisBuilder(config).build(reports)
 
     if args.output:
