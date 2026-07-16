@@ -1,3 +1,6 @@
+import io
+import zipfile
+
 import pandas as pd
 import streamlit as st
 
@@ -16,6 +19,25 @@ reports = state.get_reports()
 if not reports:
     st.info("Load a roadmap on the Roadmap page to see its reports here.")
     st.stop()
+
+
+def _export_all_zip(reports: dict) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, report in reports.items():
+            for key in report:
+                csv = report[key].to_csv(sep=";", index=False, float_format="%.6f")
+                zf.writestr(f"{name}/{key}.csv", csv)
+    return buf.getvalue()
+
+
+st.download_button(
+    label="Export all (ZIP)",
+    data=_export_all_zip(reports),
+    file_name="reports.zip",
+    mime="application/zip",
+    icon=":material/download:",
+)
 
 tabs = st.tabs(list(reports.keys()))
 
