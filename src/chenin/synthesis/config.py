@@ -264,9 +264,7 @@ def _parse_peaks(display: str, method: str) -> list[dict]:
         try:
             peaks.append({"nuclide": nuclide.strip(), "energy": float(energy)})
         except ValueError:
-            raise ValueError(
-                f"column '{display}': peak '{item}' has an invalid energy"
-            ) from None
+            raise ValueError(f"column '{display}': peak '{item}' has an invalid energy") from None
     if not peaks:
         raise ValueError(f"column '{display}' has no peaks")
     return peaks

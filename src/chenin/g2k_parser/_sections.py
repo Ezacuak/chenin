@@ -68,8 +68,7 @@ def _require(pattern, content, section):
     """
     if not pattern.search(content):
         raise ValueError(
-            f"Format de rapport inattendu pour la section {section} : "
-            "motif d'en-tete introuvable."
+            f"Format de rapport inattendu pour la section {section} : motif d'en-tete introuvable."
         )
 
 
@@ -84,9 +83,7 @@ def _require(pattern, content, section):
 def extract_s1(content):
     """extract section 1"""
     matches = S1_KV_PATTERN.findall(content)
-    return pd.DataFrame(
-        {key.strip(): value.strip() for key, value in matches}, index=[0]
-    )
+    return pd.DataFrame({key.strip(): value.strip() for key, value in matches}, index=[0])
 
 
 #############

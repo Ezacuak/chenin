@@ -9,9 +9,7 @@ NUCLIDE = re.compile(r"^(\d{1,3})?[\s-]*([A-Za-z]{1,2})[\s-]*(\d{1,3})?$")
 
 def strip_accents(s: str) -> str:
     """strip accents to avoide error on specific call"""
-    return "".join(
-        c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn"
-    )
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
 
 
 def format_nuclide(name: str) -> str:

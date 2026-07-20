@@ -17,12 +17,13 @@ config = state.get_build_config()
 
 step1, step2, step3 = st.columns(3, border=True)
 
+
 with step1:
     st.markdown("##### :material/tune: 1. Roadmap file")
     st.markdown("A roadmap file lists the core's samples (metadata + report file)")
     if config is None:
         st.caption(":material/radio_button_unchecked: Not loaded yet")
-        if st.button("Create one", key="home_to_editor"):
+        if st.button("Create or Load one", key="home_to_editor"):
             st.switch_page(str(Path(__file__).parent / "roadmap.py"))
     else:
         st.caption(f":material/check_circle: “{config.title}” loaded")

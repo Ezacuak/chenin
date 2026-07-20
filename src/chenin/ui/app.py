@@ -2,6 +2,8 @@ from pathlib import Path
 
 import streamlit as st
 
+from chenin.ui import state
+
 st.set_page_config(
     page_title="Chenin",
     page_icon=":material/science:",
@@ -21,5 +23,5 @@ pages = {
     ],
 }
 
-pg = st.navigation(pages, position="top")
+pg = st.navigation(pages)
 pg.run()

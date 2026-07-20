@@ -54,9 +54,7 @@ def _peak_measurement(s3, nuclide: str, energy: float) -> Measurement:
 
 def resolve_nuclide(s3, spec: NuclideSpec) -> Measurement:
     """Inverse-variance weighted mean over a nuclide's configured peaks."""
-    measurements = [
-        _peak_measurement(s3, peak.nuclide, peak.energy) for peak in spec.peaks
-    ]
+    measurements = [_peak_measurement(s3, peak.nuclide, peak.energy) for peak in spec.peaks]
     return Measurement.weighted_mean(measurements)
 
 

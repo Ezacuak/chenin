@@ -1,5 +1,6 @@
 """Roadmap page: load the sample list that drives Chenin, no hand-editing required."""
 
+import io
 from importlib import resources
 from pathlib import Path
 
@@ -11,10 +12,22 @@ from chenin.ui.components.sidebar import load_build_config
 
 _BLANK_ROADMAP = pd.DataFrame(
     [
-        {"LSM Code": "CORE-01", "Sample Code": "CORE-01-1", "Depth Top": 0.0,
-         "Depth Bot": 0.5, "DBD": 0.0, "G2K Report": "report_1.txt"},
-        {"LSM Code": "CORE-01", "Sample Code": "CORE-01-2", "Depth Top": 0.5,
-         "Depth Bot": 1.0, "DBD": 0.0, "G2K Report": "report_2.txt"},
+        {
+            "LSM Code": "CORE-01",
+            "Sample Code": "CORE-01-1",
+            "Depth Top": 0.0,
+            "Depth Bot": 0.5,
+            "DBD": 0.0,
+            "G2K Report": "report_1.txt",
+        },
+        {
+            "LSM Code": "CORE-01",
+            "Sample Code": "CORE-01-2",
+            "Depth Top": 0.5,
+            "Depth Bot": 1.0,
+            "DBD": 0.0,
+            "G2K Report": "report_2.txt",
+        },
     ]
 )
 
@@ -30,15 +43,10 @@ st.caption(
     "depths and density. It is the single input Chenin needs: the standard synthesis "
     "template (PB-210, RA-226, PB-Exc, AM-241, CS-137, K-40) is applied automatically."
 )
-
+# ----------------------- 1. Load a roadmap -------------------------------------------- #
 st.subheader("1. Load a roadmap", divider="gray")
-st.download_button(
-    "Download a blank roadmap template",
-    data=_BLANK_ROADMAP.to_csv(index=False).encode("utf-8"),
-    file_name="roadmap-template.csv",
-    mime="text/csv",
-    icon=":material/download:",
-)
+
+
 roadmap_file = st.file_uploader(
     "Roadmap file (.csv / .xlsx)",
     type=["csv", "xlsx", "xls"],
@@ -53,24 +61,37 @@ reports_dir = st.text_input(
     "(relative to where Chenin was launched, or an absolute path).",
 )
 
-with st.expander("Advanced: custom synthesis template", icon=":material/tune:"):
-    st.caption(
-        "The wide template has one column per output; its single method row is either "
-        "gamma peaks (`NUCLIDE@energy`, `;`-separated for a weighted mean) or an `=` "
-        "formula over other columns, e.g. `=[PB-210] - [RA-226]`. Upload one to override "
-        "the packaged default below."
-    )
-    st.code(_default_template_text(), language="text")
-    template_file = st.file_uploader("Custom template (.csv)", type=["csv"])
+with st.expander("Exemple template"):
+    st.dataframe(_BLANK_ROADMAP)
 
-st.subheader("2. Load into app", divider="gray")
+
+# ----------------------- 2. Load a Synthesis template --------------------------------- #
+st.subheader("2. Load a Synthesis template ", divider="gray")
+
+template_source = st.segmented_control(
+    "Synthesis template", ["Use default", "Upload custom"], selection_mode="single"
+)
+
+synthesis_file = None
+if template_source == "Upload custom":
+    synthesis_file = st.file_uploader("Custom template (.csv)", type=["csv"])
+    if synthesis_file is None:
+        st.info("Upload a synthesis template above to continue.", icon=":material/info:")
+        st.stop()
+else:
+    st.caption("Using the packaged lab default (PB-210, RA-226, PB-Exc, AM-241, CS-137, K-40).")
+    with st.expander("Default template"):
+        st.dataframe(pd.read_csv(io.StringIO(_default_template_text())))
+
+# ----------------------- 3. Load into app --------------------------------------------- #
+st.subheader("3. Load into app", divider="gray")
 
 if roadmap_file is None:
     st.info("Upload a roadmap above to continue.", icon=":material/info:")
     st.stop()
 
 try:
-    config = BuildConfig.from_roadmap(roadmap_file, template_file)
+    config = BuildConfig.from_roadmap(roadmap_file, synthesis_file)
 except (ValueError, KeyError) as e:
     st.error(f"Roadmap is not valid yet: {e}", icon=":material/error:")
     st.stop()

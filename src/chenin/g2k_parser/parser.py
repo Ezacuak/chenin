@@ -41,18 +41,10 @@ class G2KParser:
         # `columns`, so no post-hoc normalization is required.
         return {
             "s1": normalize_columns(extract_s1(sections[titles[0]])),
-            "s2": extract_s2_data(
-                sections[titles[1]], extract_s2_header(sections[titles[1]])
-            ),
-            "s3": extract_s3_data(
-                sections[titles[2]], extract_s3_header(sections[titles[2]])
-            ),
+            "s2": extract_s2_data(sections[titles[1]], extract_s2_header(sections[titles[1]])),
+            "s3": extract_s3_data(sections[titles[2]], extract_s3_header(sections[titles[2]])),
             "s4_nucleides": extract_s4_nucleides_data(s4_raw, s4_nucl_header),
             "s4_pics": extract_s4_pics_data(s4_raw, s4_pics_header),
-            "s5": extract_s5_data(
-                sections[titles[4]], extract_s5_header(sections[titles[4]])
-            ),
-            "s6": extract_s6_data(
-                sections[titles[5]], extract_s6_header(sections[titles[5]])
-            ),
+            "s5": extract_s5_data(sections[titles[4]], extract_s5_header(sections[titles[4]])),
+            "s6": extract_s6_data(sections[titles[5]], extract_s6_header(sections[titles[5]])),
         }

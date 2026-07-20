@@ -58,8 +58,7 @@ class SynthesisBuilder:
             section = report["s3"]
             # Resolve every nuclide source once; columns read a source or a formula.
             nuclides: dict[str, Measurement] = {
-                key: resolve_nuclide(section, spec)
-                for key, spec in self.config.nuclides.items()
+                key: resolve_nuclide(section, spec) for key, spec in self.config.nuclides.items()
             }
             for col in self.config.columns:
                 if col.source is not None:
