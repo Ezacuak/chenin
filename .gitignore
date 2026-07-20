@@ -17,12 +17,7 @@ wheels/
 out/
 test/
 note.md
-
-data/
-data/**/*.csv
-data/**/*.xlsx
-data/**/*.txt
-data/**/*.toml
+*.todo
 
 
 # AI and Agents
@@ -33,3 +28,8 @@ AGENTS.md
 
 # Git stuff
 commit_message.md
+
+# Streamlit
+.streamit/
+
+.directory
