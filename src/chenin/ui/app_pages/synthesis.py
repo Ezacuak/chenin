@@ -185,7 +185,7 @@ st.plotly_chart(fig_qc, width="stretch", key="qc_chart")
 st.subheader("Table", divider="gray")
 
 with st.container(border=True):
-    df_view_mode_widget(df, "synthesis", "table")
+    shown = df_view_mode_widget(df, "synthesis", "table")
 
     # SERAC is reserved for the synthesis (it's an R age-depth modelling tool).
-    export_dataframe(df, filename="synthesis", formats=("CSV", "Parquet", "SERAC"))
+    export_dataframe(shown, filename="synthesis", formats=("CSV", "Parquet", "SERAC"))
