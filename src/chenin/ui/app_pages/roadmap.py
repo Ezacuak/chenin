@@ -1,6 +1,7 @@
 """Roadmap page: load the sample list that drives Chenin, no hand-editing required."""
 
 import io
+import tempfile
 from importlib import resources
 from pathlib import Path
 
@@ -63,12 +64,32 @@ roadmap_file = st.file_uploader(
     "Leave 'G2K Report' empty for a planned but unmeasured layer.",
 )
 
-reports_dir = st.text_input(
-    "Reports folder",
-    value=".",
-    help="Folder holding the G2K report files listed in the roadmap "
-    "(relative to where Chenin was launched, or an absolute path).",
+report_source = st.segmented_control(
+    "Reports location",
+    ["Upload files", "Local folder"],
+    selection_mode="single",
+    default="Upload files",
 )
+
+reports_dir = None
+report_files = None
+if report_source == "Local folder":
+    reports_dir = st.text_input(
+        "Reports folder",
+        value=".",
+        help="Folder holding the G2K report files listed in the roadmap, on the "
+        "machine running Chenin (relative to where it was launched, or an "
+        "absolute path). Only works when Chenin runs on your own machine — not "
+        "when the app is deployed to a server.",
+    )
+else:
+    report_files = st.file_uploader(
+        "Report files (.txt)",
+        type=["txt"],
+        accept_multiple_files=True,
+        help="Upload the G2K report files listed in the roadmap's 'G2K Report' "
+        "column. Works whether Chenin runs locally or is deployed remotely.",
+    )
 
 with st.expander("Example roadmap"):
     st.dataframe(_BLANK_ROADMAP)
@@ -130,8 +151,17 @@ st.dataframe(
 )
 
 if st.button("Load into app", icon=":material/rocket_launch:", type="primary"):
-    if load_build_config(config, Path(reports_dir or ".")):
+    if report_files:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            for f in report_files:
+                (tmp_dir / f.name).write_bytes(f.getvalue())
+            loaded = load_build_config(config, tmp_dir)
+    else:
+        loaded = load_build_config(config, Path(reports_dir or "."))
+
+    if loaded:
         st.session_state["_build_file_key"] = ("roadmap", id(config))
         st.success("Loaded — see the Reports and Synthesis pages.")
     else:
-        st.warning("No reports were loaded — check the reports folder path above.")
+        st.warning("No reports were loaded — check the reports above.")
