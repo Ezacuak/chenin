@@ -3,12 +3,26 @@ import unicodedata
 
 HEADERS = re.compile(r"^\*+$\n^\*{5}(.*)\*{5}$\n^\*+$", re.MULTILINE)
 
+# Element symbol and mass number, in either order, separated by optional space/dash.
+NUCLIDE = re.compile(r"^(\d{1,3})?[\s-]*([A-Za-z]{1,2})[\s-]*(\d{1,3})?$")
+
 
 def strip_accents(s: str) -> str:
     """strip accents to avoide error on specific call"""
-    return "".join(
-        c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn"
-    )
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+
+def format_nuclide(name: str) -> str:
+    """format a nuclide name to canonical G2K form, e.g. "210pb" or "Pb-210" -> "PB-210" """
+    match = NUCLIDE.match(name.strip())
+    if not match:
+        raise ValueError(f"'{name}' is not a recognizable nuclide name")
+
+    mass = match.group(1) or match.group(3)
+    if mass is None:
+        raise ValueError(f"'{name}' is missing a mass number")
+
+    return f"{match.group(2).upper()}-{mass}"
 
 
 def normalize_columns(df):

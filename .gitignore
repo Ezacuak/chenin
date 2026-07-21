@@ -9,16 +9,27 @@ wheels/
 # Virtual environments
 .venv
 
+.cache/
+.pytest_cache
+
 .ruff_cache/
 
 out/
-note.txt
+test/
+note.md
+*.todo
 
-data/**/*.csv
-data/**/*.xlsx
-data/**/*.txt
 
 # AI and Agents
 .claude/
+.agents/
 CLAUDE.md
 AGENTS.md
+
+# Git stuff
+commit_message.md
+
+# Streamlit
+.streamit/
+
+.directory

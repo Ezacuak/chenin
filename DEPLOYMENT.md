@@ -17,6 +17,8 @@ Pour l'installer voici le ligne de commande:
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
+Installation de git : [git](https://git-scm.com/install/windows)
+
 En suite une simple ligne de commande et `chenin` est installer:
 ```sh
 uv tool install git+https://github.com/Ezacuak/chenin.git@dev
@@ -43,6 +45,19 @@ chenin -h
 *PS:** Je te conseil de la taper une fois avant, il y a des exemples dedans.
 
 
+
 ## Note
+
+### Utilisation d'un terminal
+
+Pour voir ou est ce qu'on est:
+```sh
+ls
+```
+
+pour aller vers un dossier:
+```sh
+cd nom_du_dossier
+```
 
 Pour le moment on extrait rapport par rapport, pas encore en masse donc 😢.

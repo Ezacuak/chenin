@@ -1,0 +1,42 @@
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+codeFont = "'JetBrains Mono':https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+baseRadius = "8px"
+showWidgetBorder = true
+showSidebarBorder = true
+linkUnderline = false
+
+[theme.light]
+primaryColor = "#9A6B1E"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f6f4ef"
+textColor = "#211d17"
+borderColor = "#e3ddd0"
+greenColor = "#1a7f37"
+redColor = "#cf222e"
+orangeColor = "#bf8700"
+blueColor = "#0969da"
+
+[theme.dark]
+primaryColor = "#d8a94a"
+backgroundColor = "#141210"
+secondaryBackgroundColor = "#1e1b17"
+textColor = "#ece7dd"
+borderColor = "#332e26"
+greenColor = "#3fb950"
+redColor = "#f85149"
+orangeColor = "#d29922"
+blueColor = "#58a6ff"
+
+[theme.light.sidebar]
+backgroundColor = "#f6f4ef"
+secondaryBackgroundColor = "#eae5d8"
+borderColor = "#e3ddd0"
+
+[theme.dark.sidebar]
+backgroundColor = "#1a1712"
+secondaryBackgroundColor = "#221e18"
+borderColor = "#332e26"
+
+[server]
+headless = true
