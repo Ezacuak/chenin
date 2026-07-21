@@ -18,7 +18,7 @@ _BLANK_ROADMAP = pd.DataFrame(
             "Sample Code": "CORE-01-1",
             "Depth Top": 0.0,
             "Depth Bot": 0.5,
-            "DBD": 0.0,
+            "DBD": 0.85,
             "G2K Report": "report_1.txt",
         },
         {
@@ -26,8 +26,17 @@ _BLANK_ROADMAP = pd.DataFrame(
             "Sample Code": "CORE-01-2",
             "Depth Top": 0.5,
             "Depth Bot": 1.0,
-            "DBD": 0.0,
+            "DBD": 0.90,
             "G2K Report": "report_2.txt",
+        },
+        {
+            # A planned-but-unmeasured layer: no report yet, kept as a depth-only row.
+            "LSM Code": "CORE-01",
+            "Sample Code": "CORE-01-3",
+            "Depth Top": 1.0,
+            "Depth Bot": 1.5,
+            "DBD": 0.92,
+            "G2K Report": "",
         },
     ]
 )
@@ -82,7 +91,7 @@ else:
         "column. Works whether Chenin runs locally or is deployed remotely.",
     )
 
-with st.expander("Exemple template"):
+with st.expander("Example roadmap"):
     st.dataframe(_BLANK_ROADMAP)
 
 
@@ -127,11 +136,12 @@ st.dataframe(
     pd.DataFrame(
         [
             {
-                "Sample": s.sample_code,
-                "Report": s.name or "—",
-                "Depth top (cm)": s.depth_top,
-                "Depth bottom (cm)": s.depth_bot,
+                "LSM Code": config.title,
+                "Sample Code": s.sample_code,
+                "Depth Top": s.depth_top,
+                "Depth Bot": s.depth_bot,
                 "DBD": s.dbd,
+                "G2K Report": s.name or "",
             }
             for s in config.samples
         ]

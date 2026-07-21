@@ -51,6 +51,6 @@ for tab, (name, report) in zip(tabs, reports.items(), strict=True):
             with st.container(border=True):
                 st.markdown(f"##### {SECTION_DESCRIPTIONS[key]}")
 
-                df_view_mode_widget(df, name, key)
+                shown = df_view_mode_widget(df, name, key)
 
-                export_dataframe(df, filename=f"{name}-{key}")
+                export_dataframe(shown, filename=f"{name}-{key}")

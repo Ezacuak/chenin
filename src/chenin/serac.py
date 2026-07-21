@@ -44,10 +44,16 @@ def export_serac(
     synthesis template's display name for that nuclide; defaults to the packaged
     lab template (``PB-Exc``, ``CS-137``, ``AM-241``). ``depth_cm_to_mm`` converts
     the synthesis's cm depths to the mm serac expects; set to ``False`` if ``df``
-    is already in mm.
+    is already in mm. Rows with no activity for any mapped nuclide (planned-but-
+    unmeasured layers) are dropped — serac has no place for them.
     """
     nuclide_columns = {**DEFAULT_NUCLIDE_COLUMNS, **(nuclide_columns or {})}
     factor = 10.0 if depth_cm_to_mm else 1.0
+
+    activity_cols = [f"Activite {name}" for name in nuclide_columns.values()]
+    activity_cols = [c for c in activity_cols if c in df.columns]
+    if activity_cols:
+        df = df[df[activity_cols].notna().any(axis=1)]
 
     out = pd.DataFrame(
         {
