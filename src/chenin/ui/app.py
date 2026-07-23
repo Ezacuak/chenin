@@ -2,8 +2,6 @@ from pathlib import Path
 
 import streamlit as st
 
-from chenin.ui import state
-
 st.set_page_config(
     page_title="Chenin",
     page_icon=":material/science:",
@@ -17,7 +15,7 @@ pages = {
         st.Page(_PAGES_DIR / "home.py", title="Home", icon=":material/home:"),
     ],
     "Workflow": [
-        st.Page(_PAGES_DIR / "roadmap.py", title="Roadmap file", icon=":material/tune:"),
+        st.Page(_PAGES_DIR / "data_loader.py", title="Load Data", icon=":material/tune:"),
         st.Page(_PAGES_DIR / "reports.py", title="Reports", icon=":material/description:"),
         st.Page(_PAGES_DIR / "synthesis.py", title="Synthesis", icon=":material/insights:"),
     ],

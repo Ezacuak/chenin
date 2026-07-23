@@ -33,3 +33,5 @@ commit_message.md
 .streamit/
 
 .directory
+
+graphify-out/
