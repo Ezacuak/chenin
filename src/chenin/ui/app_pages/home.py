@@ -13,20 +13,20 @@ st.markdown(
     "for age-depth modelling."
 )
 
-config = state.get_build_config()
+reports = state.get_reports()
 
 step1, step2, step3 = st.columns(3, border=True)
 
 
 with step1:
-    st.markdown("##### :material/tune: 1. Roadmap file")
-    st.markdown("A roadmap file lists the core's samples (metadata + report file)")
-    if config is None:
+    st.markdown("##### :material/tune: 1. Load Data")
+    st.markdown("Load data from 'Génie2000' reports.")
+    if not reports:
         st.caption(":material/radio_button_unchecked: Not loaded yet")
-        if st.button("Create or Load one", key="home_to_editor"):
-            st.switch_page(str(Path(__file__).parent / "roadmap.py"))
+        if st.button("Load reports", key="home_to_editor"):
+            st.switch_page(str(Path(__file__).parent / "data_loader.py"))
     else:
-        st.caption(f":material/check_circle: “{config.title}” loaded")
+        st.caption(f":material/check_circle: {len(reports)} loaded")
 
 with step2:
     st.markdown("##### :material/description: 2. Reports")
@@ -38,7 +38,7 @@ with step2:
     if reports:
         st.caption(f":material/check_circle: {len(reports)} report(s) loaded")
     else:
-        st.caption(":material/radio_button_unchecked: Waiting on a roadmap file")
+        st.caption(":material/radio_button_unchecked: Waiting for reports file")
 
 with step3:
     st.markdown("##### :material/insights: 3. Synthesis")

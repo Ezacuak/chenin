@@ -3,6 +3,7 @@ from enum import Enum
 import pandas as pd
 import streamlit as st
 from streamlit_extras.dataframe_explorer import dataframe_explorer
+from streamlit_pivot import st_pivot_table
 
 _AGGREGATIONS = ("mean", "sum", "count", "min", "max", "median")
 
@@ -66,13 +67,21 @@ def df_view_mode_widget(df: pd.DataFrame, name: str, key: str) -> pd.DataFrame:
             width="content",
         )
 
-    if view == DfViewMode.PIVOT:
-        shown = _pivot_view(df, key=f"{name}_{key}")
-        return shown if shown is not None else df
-    elif view == DfViewMode.FILTERED:
-        filtered = dataframe_explorer(df)
-        st.dataframe(filtered, hide_index=True, width="stretch")
-        return filtered
-    else:
-        st.dataframe(df, hide_index=True, width="stretch")
-        return df
+    match view:
+        case DfViewMode.TABLE:
+            st.dataframe(df, hide_index=True, width="stretch")
+            return df
+
+        case DfViewMode.PIVOT:
+            result = st_pivot_table(df, key=f"{name}_{key}")
+            st.dataframe(result)
+            return df
+
+        case DfViewMode.FILTERED:
+            filtered = dataframe_explorer(df)
+            st.dataframe(filtered, hide_index=True, width="stretch")
+            return filtered
+
+        case _:
+            st.dataframe(df, hide_index=True, width="stretch")
+            return df
