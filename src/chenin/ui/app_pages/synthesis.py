@@ -10,10 +10,20 @@ from chenin.ui.components.export import export_dataframe
 st.title("Synthesis")
 st.caption("One row per sample: activities, uncertainties and depth.")
 
-st.warning(":material/bug_report: Work in progress: Deactivated for a moment !")
+st.error(":material/bug_report: Work in progress")
+
 
 # config = state.get_build_config()
-# reports = state.get_reports()
+
+st.subheader("1. Reports selection", divider="grey")
+
+reports = state.get_reports()
+
+options = st.multiselect("Select report(s) you want in your synthesis",
+    reports,
+)
+
+st.write(options)
 
 # if config is None or not reports:
 #     st.info("Load a roadmap on the Roadmap page to build the synthesis.")
