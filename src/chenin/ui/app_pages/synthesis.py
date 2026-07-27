@@ -220,11 +220,51 @@ with tab_viewer:
 if not library:
     st.stop()
 
+st.write(library)
+
 # ===================================================================================== #
 # ================================= Synthesis Builder ================================= #
 # ===================================================================================== #
 st.subheader("3. Synthesis build", divider="grey")
 
+st.warning(":material/build: Work in Pogress")
+
+st.markdown("#### 3.1 Select Columns")
+st.markdown(":gray[:material/notes: Rows are depth of sample]")
+
+
+with st.form("Columns", clear_on_submit=True):
+    st.subheader("Columns choices")
+
+    col1, col2 = st.columns([2, 2])
+    with col1:
+        column_name = st.text_input(
+            "Column name", placeholder="e.g. 210Pb Activity, K40 Incertitud"
+        )
+
+    with col2:
+        column_type = st.segmented_control("Column type", ["Activity", "Incertitud", "Depth"])
+    submitted = st.form_submit_button("Add column")
+
+    if submitted:
+        # FIXME: Adapte to columns choices
+        if not nuclide_input or not peaks_input:
+            st.warning("Please provide both a nuclide name and at least one peak.")
+        else:
+            try:
+                canonical_name = format_nuclide(nuclide_input)
+                peaks = [float(p.strip()) for p in peaks_input.split(",") if p.strip()]
+                library[canonical_name] = sorted(peaks)
+                state.store_nuclide_library(library)
+                st.toast(f"Saved as **{canonical_name}**!")
+                st.rerun()
+            except ValueError as e:
+                st.error(f"Input error: {e}")
+
+# if not columns:
+# st.stop()
+
+st.markdown("#### 3.2 Generate synthesis")
 
 # if config is None or not reports:
 #     st.info("Load a roadmap on the Roadmap page to build the synthesis.")
