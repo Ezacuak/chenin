@@ -1,13 +1,11 @@
 import json
 
 import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
 
 from chenin.g2k_parser import format_nuclide
 from chenin.ui import state
 
-# Categorical palette (fixed hue order, CVD-safe on adjacent pairs).
 _PALETTE = [
     "#2a78d6",  # blue
     "#eb6834",  # orange
@@ -123,23 +121,25 @@ with tab_manage:
                 except ValueError as e:
                     st.error(f"Input error: {e}")
 
-    st.divider()
+    # NOTE: Pour Anne-lise
+    st.info(":material/notification_settings: Anne-lise: On peut changer la librairie par default.")
 
-    st.markdown("##### Active library")
-
-    if not library:
-        st.info("The library is currently empty. Add a nuclide above or upload a JSON/CSV file.")
-    else:
-        for nuc, peaks in list(library.items()):
-            col_info, col_action = st.columns([5, 1])
-            with col_info:
-                peaks_formatted = ", ".join(f"{p:.2f}" for p in peaks)
-                st.markdown(f"**{nuc}**: `{peaks_formatted}` keV")
-            with col_action:
-                if st.button("Delete", key=f"del_{nuc}"):
-                    del library[nuc]
-                    state.store_nuclide_library(library)
-                    st.rerun()
+    with st.expander("Active library"):
+        if not library:
+            st.info(
+                "The library is currently empty. Add a nuclide above or upload a JSON/CSV file."
+            )
+        else:
+            for nuc, peaks in list(library.items()):
+                col_info, col_action = st.columns([5, 1])
+                with col_info:
+                    peaks_formatted = ", ".join(f"{p:.2f}" for p in peaks)
+                    st.markdown(f"**{nuc}**: `{peaks_formatted}` keV")
+                    with col_action:
+                        if st.button("Delete", key=f"del_{nuc}"):
+                            del library[nuc]
+                            state.store_nuclide_library(library)
+                            st.rerun()
 
 with tab_viewer:
     st.warning(":material/timer: Comming soon !")
@@ -217,8 +217,13 @@ with tab_viewer:
     #             ]
     #             st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
+if not library:
+    st.stop()
 
 # ===================================================================================== #
+# ================================= Synthesis Builder ================================= #
+# ===================================================================================== #
+st.subheader("3. Synthesis build", divider="grey")
 
 
 # if config is None or not reports:
