@@ -10,13 +10,10 @@ SYNTHESIS_KEY = "synthesis"
 NUCLIDE_LIBRARY_KEY = "nuclide_library"
 LAYERS_KEY = "layers"
 
-# Reference peaks for common nuclides, editable from the Synthesis page.
 DEFAULT_NUCLIDE_LIBRARY: dict[str, list[float]] = {
-    "CO-60": [1173.2, 1332.5],
     "CS-137": [661.7],
-    "NA-22": [511.0, 1274.5],
     "PB-210": [46.5],
-    "RA-226": [186.2],
+    "Th-228": [238.6],
     "K-40": [1460.8],
     "AM-241": [59.5],
 }

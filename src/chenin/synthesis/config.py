@@ -215,10 +215,9 @@ def parse_template(file: str | Path | IO) -> tuple[dict[str, dict], dict[str, di
         if not method:
             raise ValueError(f"column '{display}' has no method")
 
-        key = _slug(display)
+        key = slugify(display)
         if method.startswith("="):
-            formula = _REF_PATTERN.sub(lambda m: _slug(m.group(1)), method[1:].strip())
-            columns[key] = {"name": display, "formula": formula}
+            columns[key] = {"name": display, "formula": expand_formula_refs(method)}
         else:
             nuclides[key] = {"peaks": _parse_peaks(display, method)}
             columns[key] = {"name": display, "source": key}
@@ -282,7 +281,7 @@ def _cell_float(value) -> float | None:
         return None
 
 
-def _slug(name: str) -> str:
+def slugify(name: str) -> str:
     """Turn a display name into a valid identifier key (e.g. 'PB-210' -> 'pb_210')."""
     s = re.sub(r"[^0-9a-zA-Z]+", "_", name.strip().lower()).strip("_")
     if not s:
@@ -290,6 +289,17 @@ def _slug(name: str) -> str:
     if s[0].isdigit():
         s = "_" + s
     return s
+
+
+def expand_formula_refs(expr: str) -> str:
+    """Rewrite a template formula into an evaluable expression.
+
+    Strips a leading ``=`` and replaces every ``[Display Name]`` reference by its
+    slugified key, so ``"=[PB-210] - [RA-226]"`` becomes ``"pb_210 - ra_226"``. This is
+    the preprocessing :func:`parse_template` applies to a formula cell, shared so that
+    anything validated elsewhere (the app, the doc tester) builds identically.
+    """
+    return _REF_PATTERN.sub(lambda m: slugify(m.group(1)), expr.lstrip("=").strip())
 
 
 def _opt_float(value) -> float | None:

@@ -6,7 +6,9 @@ from .config import (
     Peak,
     SampleSpec,
     default_geometry_columns,
+    expand_formula_refs,
     parse_template,
+    slugify,
 )
 from .layers import contiguity_gaps, index_from_name, overlaps, slice_samples
 from .loader import load_reports
@@ -22,9 +24,11 @@ __all__ = [
     "SynthesisBuilder",
     "contiguity_gaps",
     "default_geometry_columns",
+    "expand_formula_refs",
     "index_from_name",
     "load_reports",
     "overlaps",
     "parse_template",
     "slice_samples",
+    "slugify",
 ]

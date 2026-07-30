@@ -110,10 +110,18 @@ geometry: `Echantillon`, `Profondeur`, `Epaisseur`, `DBD`.
 
 ## Documentation
 
-| Document | For | Content |
-|---|---|---|
-| [`CLAUDE.md`](CLAUDE.md) | Contributors | Architecture, conventions, section layout. |
-| [`AGENTS.md`](AGENTS.md) | Contributors | Compact architecture map. |
+Full documentation is in [`docs/`](docs/README.md). The user guide is also rendered
+inside the app, under **Documentation** in the sidebar — the markdown files are the
+single source for both.
+
+| Start here | For |
+|---|---|
+| [Overview](docs/guide/overview.md) | What Chenin does, the workflow, the vocabulary |
+| [Install & Update](docs/guide/install.md) | Getting it running |
+| [Formulas](docs/guide/formulas.md) | Derived columns and uncertainty propagation |
+| [Command Line](docs/guide/command-line.md) | Every subcommand and flag |
+| [Troubleshooting](docs/guide/troubleshooting.md) | When something goes wrong |
+| [Architecture](docs/dev/architecture.md) | Contributors: package layout and data flows |
 
 ## Project layout
 
@@ -123,16 +131,19 @@ src/chenin/
 ├── synthesis/      # build model, slicing rule, report loading, synthesis builder
 ├── ui/             # Streamlit app (pages, components, shared state)
 └── cli.py          # `chenin` command (extract / synthesis / app)
+docs/               # user guide (shipped + rendered in-app) and developer guide
 tests/              # pytest suite
 ```
 
 ## Development
 
 ```sh
-uv run pytest          # run the test suite
-uvx ruff check src/    # lint
-uv run jupyter lab     # exploration notebook
+uv sync                     # install, including dev dependencies
+uv run pytest               # run the test suite
+uvx ruff check src/ tests/  # lint
+uv run chenin app           # the app, against your working tree
 ```
 
-The G2K CSV/report conventions (French locale, section layout, key nuclides) are
-documented in [`CLAUDE.md`](CLAUDE.md).
+See [Contributing](docs/dev/contributing.md) for the uv workflow, the documentation
+house style and the conventions worth not breaking, and
+[Parsing G2K reports](docs/dev/parsing-g2k.md) for the report format itself.

@@ -28,10 +28,10 @@ from chenin.synthesis import (
     slice_samples,
 )
 from chenin.synthesis.config import (
-    _REF_PATTERN,  # reused so [Name] refs key exactly as the real template parser
     GEOMETRY_COLUMNS,
-    _slug,
+    expand_formula_refs,
     parse_template,
+    slugify,
 )
 from chenin.synthesis.measurement import Measurement
 from chenin.synthesis.providers import (
@@ -156,8 +156,6 @@ with st.form("add_nuclide_form", clear_on_submit=True):
             except ValueError as e:
                 st.error(f"Input error: {e}")
 
-# NOTE: Pour Anne-lise
-st.info(":material/notification_settings: Anne-lise: On peut changer la librairie par default.")
 
 with st.expander("Active library"):
     if not library:
@@ -286,7 +284,7 @@ st.caption(
 
 st.session_state.setdefault("layers_version", 0)
 
-with st.expander(":material/straighten: Generate depths from a slicing rule", expanded=True):
+with st.expander(":material/straighten: Generate depths from a slicing rule", expanded=False):
     gen_a, gen_b, gen_c = st.columns([1, 1, 2])
     with gen_a:
         gen_start = st.number_input("Start depth (cm)", value=0.0, step=0.5, key="gen_start")
@@ -408,12 +406,11 @@ def _schema_to_specs(schema: list[dict]) -> tuple[dict[str, NuclideSpec], list[C
     nuclides: dict[str, NuclideSpec] = {}
     columns: list[ColumnSpec] = []
     for item in schema:
-        key = _slug(item["name"])
+        key = slugify(item["name"])
         if item.get("geometry"):
             columns.append(ColumnSpec(key=key, name=item["name"], geometry=item["geometry"]))
         elif item.get("formula"):
-            expr = item["formula"].lstrip("=").strip()
-            formula = _REF_PATTERN.sub(lambda m: _slug(m.group(1)), expr)
+            formula = expand_formula_refs(item["formula"])
             columns.append(ColumnSpec(key=key, name=item["name"], formula=formula))
         else:
             peaks = [Peak(nuclide=n, energy=e) for n, e in item["peaks"]]
@@ -592,9 +589,12 @@ def _validate_formula(expr: str, schema: list[dict]) -> str | None:
     """Check a formula against the real evaluator; return an error message or None."""
     nuclides, _ = _schema_to_specs([i for i in schema if not i.get("geometry")])
     dummy = {k: Measurement(1.0, 0.1) for k in nuclides}
-    parsed = _REF_PATTERN.sub(lambda m: _slug(m.group(1)), expr.lstrip("=").strip())
     try:
-        evaluate_formula(parsed, dummy)
+        evaluate_formula(expand_formula_refs(expr), dummy)
+    except ZeroDivisionError:
+        # Measurement.__truediv__ divides raw floats; only the relative-uncertainty
+        # term is guarded, so `=[A] / 0` reaches here instead of being a ValueError.
+        return "division by zero"
     except (ValueError, SyntaxError) as e:
         return str(e)
     return None
