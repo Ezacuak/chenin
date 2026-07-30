@@ -44,8 +44,7 @@ def df_view_mode_widget(df: pd.DataFrame, name: str, key: str) -> pd.DataFrame:
             return df
 
         case DfViewMode.PIVOT:
-            result = st_pivot_table(df, key=f"{name}_{key}")
-            st.dataframe(result)
+            st_pivot_table(df, key=f"{name}_{key}")
             return df
 
         case DfViewMode.FILTERED:
