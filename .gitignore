@@ -35,3 +35,5 @@ commit_message.md
 .directory
 
 graphify-out/
+data/nuclide_library.json
+NOTE.md

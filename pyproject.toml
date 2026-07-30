@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "pandas>=3.0.3",
+    "pandas-stubs~=3.0.3",
     "plotly>=6.8.0",
     "pyarrow>=24.0.0",
     "streamlit>=1.58.0",
@@ -22,6 +23,13 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/chenin"]
+
+# The user guide is a single source of truth: browsable on GitHub under docs/guide/ and
+# shipped inside the package so the app can render it from an installed wheel.
+# Only `guide` is listed — docs/dev/ is repo-only, and hatchling's `exclude` does not
+# apply to forced includes, so the subtree has to be selected here.
+[tool.hatch.build.targets.wheel.force-include]
+"docs/guide" = "chenin/docs/guide"
 
 [dependency-groups]
 dev = [

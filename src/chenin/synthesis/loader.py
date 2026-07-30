@@ -1,26 +1,36 @@
+import warnings
 from pathlib import Path
 
 from chenin.g2k_parser import Report
 
-from .config import BuildConfig
+from .layers import natural_key
 
 
-def load_reports(config: BuildConfig, base_dir: Path) -> dict[str, Report]:
-    """Build one Report per sample with a report file, read from disk.
+def load_reports(directory: str | Path, pattern: str = "*.txt") -> dict[str, Report]:
+    """Parse every G2K report in a directory, keyed by file stem.
 
-    Report files sit next to the roadmap, so ``base_dir`` (the roadmap's folder for
-    the CLI, or the working directory for the app) is the report root. Samples with no
-    report file (depth-only rows) are skipped. Reports are keyed by the sample ``name``.
+    The stem is the report key used everywhere else (``Report.name``,
+    ``SampleSpec.report``, the app's report selector), and the mapping is
+    natural-sorted so ``NOI_S_2`` comes before ``NOI_S_10``.
+
+    A directory can hold unrelated ``.txt`` files, so files that do not parse as a G2K
+    report are skipped — but never silently: each one is warned about, because a
+    report vanishing from a synthesis is a data-integrity problem, not a detail.
     """
-    root = (base_dir / (config.base_path or ".")).resolve()
+    root = Path(directory)
+    if not root.is_dir():
+        raise NotADirectoryError(f"not a directory: {root}")
+
+    paths = sorted(root.glob(pattern), key=lambda p: natural_key(p.stem))
 
     reports: dict[str, Report] = {}
-    for sample in config.samples:
-        if not sample.name:
-            continue
-        path = root / sample.name
-        if not path.exists():
-            raise FileNotFoundError(f"report not found for sample '{sample.name}': {path}")
-        reports[sample.name] = Report(path, name=sample.name)
+    for path in paths:
+        try:
+            reports[path.stem] = Report(path, name=path.stem)
+        except (ValueError, KeyError) as e:
+            warnings.warn(f"skipped {path.name}: {e}", stacklevel=2)
+
+    if not reports:
+        raise FileNotFoundError(f"no parsable G2K report matching '{pattern}' in {root}")
 
     return reports

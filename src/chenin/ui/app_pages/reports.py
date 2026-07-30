@@ -17,7 +17,7 @@ st.caption("Every extracted section of every loaded report.")
 reports = state.get_reports()
 
 if not reports:
-    st.info("Load a roadmap on the Roadmap page to see its reports here.")
+    st.info("Load some reports in the Load data page to see its reports here")
     st.stop()
 
 

@@ -1,0 +1,43 @@
+# NOTE: docs/ must NOT be ignored — pyproject force-includes docs/guide into the wheel
+# and hatchling fails the build if the directory is missing from the context.
+
+.git
+.gitignore
+.github
+.gitattributes
+
+.venv
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+wheels/
+
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+
+tests/
+data/
+out/
+test/
+test.py
+*.ipynb
+*.serac
+
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Root-level scratch markdown, but keep the README the build needs. Patterns are
+# anchored at the context root, so docs/**/*.md is untouched.
+*.md
+!README.md
+
+graphify-out/
+.claude/
+.agents/
+*.todo
+.directory
