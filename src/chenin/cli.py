@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from chenin.g2k_parser import SECTION_DESCRIPTIONS, Report
-from chenin.synthesis import BuildConfig, SynthesisBuilder, load_reports
+from chenin.synthesis import BuildConfig, SynthesisBuilder, load_reports, slice_samples
 
 SUBCOMMANDS = ("extract", "synthesis", "app")
 
@@ -32,11 +32,35 @@ def _add_extract_parser(subparsers):
 def _add_synthesis_parser(subparsers):
     p = subparsers.add_parser(
         "synthesis",
-        help="build a synthesis from a roadmap file",
+        help="build a synthesis from a directory of Génie 2000 reports",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "layer depths:\n"
+            "  reports carry no depth, so they are generated from a constant slicing\n"
+            "  rule. By default the slice number is read from the end of the file name\n"
+            "  (NOI_S_13 -> 13), which keeps a core with unmeasured slices at its true\n"
+            "  depths; --sequential stacks the reports contiguously instead."
+        ),
+    )
+    p.add_argument("reports", help="directory holding the Génie 2000 reports (.txt)")
+    p.add_argument(
+        "--start",
+        type=float,
+        default=0.0,
+        metavar="CM",
+        help="depth of the first slice (default 0)",
     )
     p.add_argument(
-        "roadmap",
-        help="path to the roadmap file (sample list, CSV or Excel)",
+        "--thickness",
+        type=float,
+        default=1.0,
+        metavar="CM",
+        help="slice thickness in cm (default 1)",
+    )
+    p.add_argument(
+        "--sequential",
+        action="store_true",
+        help="stack reports contiguously instead of using the index in their name",
     )
     p.add_argument(
         "--template",
@@ -77,8 +101,16 @@ def _run_extract(args):
 
 
 def _run_synthesis(args):
-    config = BuildConfig.from_roadmap(args.roadmap, args.template)
-    reports = load_reports(config, Path(args.roadmap).parent)
+    reports = load_reports(args.reports)
+    samples = slice_samples(
+        reports,
+        start=args.start,
+        thickness=args.thickness,
+        use_name_index=not args.sequential,
+    )
+    config = BuildConfig.from_template(
+        args.template, samples, title=Path(args.reports).resolve().name
+    )
     synthesis = SynthesisBuilder(config).build(reports)
 
     if args.output:

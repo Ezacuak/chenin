@@ -2,15 +2,24 @@
 
 from .g2k_parser import G2KParser, Report, format_nuclide
 from .serac import export_serac
-from .synthesis import BuildConfig, Measurement, SynthesisBuilder, load_reports
+from .synthesis import (
+    BuildConfig,
+    Measurement,
+    SampleSpec,
+    SynthesisBuilder,
+    load_reports,
+    slice_samples,
+)
 
 __all__ = [
     "BuildConfig",
     "G2KParser",
     "Measurement",
     "Report",
+    "SampleSpec",
     "SynthesisBuilder",
     "export_serac",
     "format_nuclide",
     "load_reports",
+    "slice_samples",
 ]

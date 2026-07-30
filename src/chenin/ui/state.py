@@ -8,6 +8,7 @@ from chenin.g2k_parser import Report
 REPORTS_KEY = "reports"
 SYNTHESIS_KEY = "synthesis"
 NUCLIDE_LIBRARY_KEY = "nuclide_library"
+LAYERS_KEY = "layers"
 
 # Reference peaks for common nuclides, editable from the Synthesis page.
 DEFAULT_NUCLIDE_LIBRARY: dict[str, list[float]] = {
@@ -38,6 +39,19 @@ def store_synthesis(df: pd.DataFrame) -> None:
 
 def get_synthesis() -> pd.DataFrame | None:
     return st.session_state.get(SYNTHESIS_KEY)
+
+
+def store_layers(layers: pd.DataFrame) -> None:
+    """Store the core-layer table (one row per report: depths, density, sample code).
+
+    G2K reports carry no depth, so this is the one place the layer geometry exists.
+    Every builder concept reads it from here.
+    """
+    st.session_state[LAYERS_KEY] = layers
+
+
+def get_layers() -> pd.DataFrame | None:
+    return st.session_state.get(LAYERS_KEY)
 
 
 def store_nuclide_library(library: dict[str, list[float]]) -> None:

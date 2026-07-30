@@ -13,10 +13,12 @@ Chenin does three things:
 3. **Visualise & export** — browse everything in a web app and export to CSV, Parquet
    or SERAC.
 
-Everything is driven by a single **roadmap** (a `.csv` or `.xlsx` spreadsheet) that
-lists which reports belong to the core and at what depths. The nuclides to pull out
-come from a **synthesis template**, and a sensible lab default ships with Chenin — so
-in the common case the roadmap is all you write.
+You point Chenin at a folder of reports and describe the **core layers** — which report
+is which slice of sediment, and at what depth. Cores are usually cut at a constant step
+with the slice number in the file name, so Chenin can generate the depths for you and
+let you correct them. Which nuclides land in the table comes from a **synthesis
+template**, and a sensible lab default ships with Chenin — so in the common case you
+write nothing at all.
 
 ## Requirements
 
@@ -48,40 +50,47 @@ Then prefix commands with `uv run` (e.g. `uv run chenin ...`).
 
 ```sh
 # 1. Inspect a single report
-chenin extract data/test/rapport-RGU_3cm.txt          # all sections to stdout
-chenin extract data/test/rapport-RGU_3cm.txt -s s3    # just section 3
-chenin extract data/test/rapport-RGU_3cm.txt -o out/  # each section to a CSV
+chenin extract data/NOIR24-01/NOI_S_1.txt          # all sections to stdout
+chenin extract data/NOIR24-01/NOI_S_1.txt -s s3    # just section 3
+chenin extract data/NOIR24-01/NOI_S_1.txt -o out/  # each section to a CSV
 
-# 2. Build a synthesis from a roadmap (uses the packaged default template)
-chenin synthesis data/NOIR24-01/NOIR24-01-Roadmap.csv                  # print the table
-chenin synthesis data/NOIR24-01/NOIR24-01-Roadmap.csv -o synthesis.csv # export it
-chenin synthesis roadmap.csv --template my_template.csv                # custom columns
+# 2. Build a synthesis from a folder of reports (uses the packaged default template)
+chenin synthesis data/NOIR24-01/ --thickness 0.5                    # print the table
+chenin synthesis data/NOIR24-01/ --thickness 0.5 -o synthesis.csv   # export it
+chenin synthesis data/NOIR24-01/ --template my_template.csv         # custom columns
 
 # 3. Launch the web app (recommended for day-to-day use)
 chenin app
 ```
 
-`chenin app` opens the Streamlit interface in your browser: load a roadmap once on the
-**Roadmap** page, then browse the extracted reports and the synthesis, with a
-sediment-core view and per-nuclide depth profiles.
+`chenin app` opens the Streamlit interface in your browser: upload the reports on the
+**Load Data** page, describe the core layers on the **Synthesis** page, then browse the
+extracted sections and the synthesis, with a sediment-core view and per-nuclide depth
+profiles.
 
 > The bare form `chenin report.txt` still works as a shortcut for
 > `chenin extract report.txt`.
 
-## The roadmap
+## Core layers
 
-The roadmap is the single input you write: one row per sample, listing its report
-file and its layer depths (which are *not* in the G2K reports). It is an ordinary
-spreadsheet — edit it in Excel/LibreOffice and save as `.csv` or `.xlsx`. Report files
-sit next to the roadmap. A cell left empty in `G2K Report` keeps a planned-but-
-unmeasured layer as a depth-only row.
+A G2K report says what a sample contains, never where it came from. The layer geometry
+— depth top, depth bottom, dry bulk density — has to come from you.
 
-```csv
-LSM Code, Sample Code, Depth Top, Depth Bot, DBD, G2K Report
-NOIR24-01, NOI24-01-1, 0.0, 0.5, 0, NOI_S_1.txt
-NOIR24-01, NOI24-01-2, 0.5, 1.0, 0, NOI_S_2.txt
-NOIR24-01, NOI24-01-3, 1.0, 1.5, 0,
+Because cores are cut at a constant step and the slice number is usually written into
+the file name, Chenin generates the depths from a slicing rule:
+
+```sh
+chenin synthesis data/NOIR24-01/ --start 0 --thickness 0.5
 ```
+
+By default the slice number is read from the end of the file name (`NOI_S_13` → 13), so
+a core with unmeasured slices keeps its true depths — if slice 12 was never counted,
+slice 13 still sits at 6.0 cm instead of sliding up to fill the hole. Pass
+`--sequential` to stack the reports contiguously instead. In the app the same rule
+prefills the **Core layers** table, where every cell stays editable for cores that are
+not regular.
+
+## The synthesis template
 
 Which nuclides land in the synthesis comes from a **synthesis template**: a compact
 table whose header row names the output columns and whose single method row says how
@@ -93,31 +102,27 @@ PB-210,       RA-226,                                          PB-Exc,          
 PB-210@46.54, PB-214@295.21; PB-214@351.92; BI-214@609.31,     =[PB-210] - [RA-226], K-40@1460.82
 ```
 
-The standard EDYTEM-PTAL template ships with Chenin and is applied automatically, so
-most cores need only a roadmap. Pass `--template my_template.csv` (or upload one on the
-Roadmap page) to override it.
+The standard EDYTEM-PTAL template ships with Chenin and is applied automatically. Pass
+`--template my_template.csv` (or edit and download one in the app) to override it.
 
-See [`docs/user-guide.md`](docs/user-guide.md) for the full walkthrough, and
-[`docs/synthesis.md`](docs/synthesis.md) for the complete roadmap and template schema.
+Each measured column yields an `Activite …`/`Incertitude …` pair, prefixed by the layer
+geometry: `Echantillon`, `Profondeur`, `Epaisseur`, `DBD`.
 
 ## Documentation
 
 | Document | For | Content |
 |---|---|---|
-| [`docs/user-guide.md`](docs/user-guide.md) | Users | End-to-end workflow: install → roadmap → reports → synthesis → export. |
-| [`docs/synthesis.md`](docs/synthesis.md) | Users / power users | Full roadmap + synthesis-template schema, peaks, formulas, output columns. |
-| [`docs/measurement.md`](docs/measurement.md) | Curious users / devs | The `Measurement` value object and uncertainty propagation. |
 | [`CLAUDE.md`](CLAUDE.md) | Contributors | Architecture, conventions, section layout. |
+| [`AGENTS.md`](AGENTS.md) | Contributors | Compact architecture map. |
 
 ## Project layout
 
 ```
 src/chenin/
 ├── g2k_parser/     # parsing library: G2K report -> {section: DataFrame}
-├── synthesis/      # roadmap/template model, report loading, synthesis builder
+├── synthesis/      # build model, slicing rule, report loading, synthesis builder
 ├── ui/             # Streamlit app (pages, components, shared state)
 └── cli.py          # `chenin` command (extract / synthesis / app)
-docs/               # user and reference documentation
 tests/              # pytest suite
 ```
 

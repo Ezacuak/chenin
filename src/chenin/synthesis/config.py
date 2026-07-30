@@ -1,15 +1,17 @@
 """Build model: parse and validate the synthesis inputs.
 
-A synthesis is driven by two scientist-friendly tables:
+A synthesis is driven by two things:
 
-- a **roadmap** CSV/Excel (per core) — the ordered sample list (report file +
-  layer depths + density), the data absent from the G2K reports;
+- a **sample list** — the ordered layers of the core, each one a report file plus its
+  depths and density. This is the data absent from the G2K reports; it is entered in
+  the app (Synthesis page, "Core layers") or generated from a slicing rule by
+  :mod:`chenin.synthesis.layers`;
 - a **synthesis template** CSV — a compact *wide* table whose header row gives the
-  output column names and whose single second row gives each column's method
-  (gamma peaks or an arithmetic formula). A lab default ships with the package.
+  output column names and whose single second row gives each column's method (gamma
+  peaks or an arithmetic formula). A lab default ships with the package.
 
-Both are parsed into the same validated :class:`BuildConfig`; everything
-downstream depends only on that object, not on the input format.
+Both end up in a validated :class:`BuildConfig`; everything downstream depends only on
+that object, not on where the samples came from.
 """
 
 import re
@@ -21,13 +23,15 @@ from typing import IO
 
 import pandas as pd
 
-# --- Roadmap column headers (as written by scientists) --- #
-RM_CORE = "LSM Code"
-RM_SAMPLE = "Sample Code"
-RM_TOP = "Depth Top"
-RM_BOT = "Depth Bot"
-RM_DBD = "DBD"
-RM_REPORT = "G2K Report"
+# Geometry field -> output column name. The names are French because they feed
+# SERAC and the lab's downstream workbooks; do not translate them.
+# ``thickness`` is derived (depth_bot - depth_top), the rest are SampleSpec fields.
+GEOMETRY_COLUMNS = {
+    "sample_code": "Echantillon",
+    "depth_top": "Profondeur",
+    "thickness": "Epaisseur",
+    "dbd": "DBD",
+}
 
 
 @dataclass(frozen=True)
@@ -54,57 +58,71 @@ class NuclideSpec:
 class ColumnSpec:
     """One displayed column of the synthesis.
 
-    Exactly one of ``source`` (a nuclide key) or ``formula`` (arithmetic over nuclide
-    keys) is set.
+    Exactly one of ``source`` (a nuclide key), ``formula`` (arithmetic over nuclide
+    keys) or ``geometry`` (a key of :data:`GEOMETRY_COLUMNS`) is set. Geometry columns
+    are written as-is; the other two yield an ``Activite``/``Incertitude`` pair.
     """
 
     key: str
     name: str
     source: str | None = None
     formula: str | None = None
+    geometry: str | None = None
+
+    @property
+    def is_geometry(self) -> bool:
+        return self.geometry is not None
 
 
 @dataclass(frozen=True)
 class SampleSpec:
-    """One sediment sample: a report file plus its layer geometry (cm).
+    """One sediment sample: a report plus its layer geometry (cm).
 
     ``depth_top``/``depth_bot`` are the missing data source — they are not present in
-    the G2K report and must come from the roadmap. ``name`` (the report file) may be
-    ``None`` for a planned-but-unmeasured layer, kept as a depth-only row.
+    the G2K report. ``report`` is the report key (its stem, matching ``Report.name``)
+    and may be ``None`` for a planned-but-unmeasured layer, kept as a depth-only row.
     """
 
-    name: str | None
+    report: str | None
     depth_top: float
     depth_bot: float
     sample_code: str | None = None
     dbd: float | None = None
 
+    @property
+    def thickness(self) -> float:
+        return self.depth_bot - self.depth_top
 
-@dataclass(frozen=True)
-class MetadataSpec:
-    """Core-level metadata used to fill non-activity columns.
 
-    ``base_year``/``taux_sedimentation`` drive the optional constant-rate ``Age``
-    column; ``coring_yr`` records when the core was taken (kept for downstream
-    age-depth tools).
-    """
-
-    base_year: float | None = None
-    taux_sedimentation: float | None = None
-    coring_yr: float | None = None
+def default_geometry_columns() -> list[ColumnSpec]:
+    """The standard geometry columns, in output order."""
+    return [
+        ColumnSpec(key=field, name=name, geometry=field)
+        for field, name in GEOMETRY_COLUMNS.items()
+    ]
 
 
 @dataclass(frozen=True)
 class BuildConfig(Mapping):
-    """A validated build configuration: samples + synthesis format."""
+    """A validated build configuration: samples + synthesis format.
+
+    Validation runs on construction, so building the specs by hand (as the app does)
+    is checked exactly like parsing them from a file.
+    """
 
     title: str
     description: str | None
-    base_path: str | None
     samples: list[SampleSpec]
-    metadata: MetadataSpec
     nuclides: dict[str, NuclideSpec]
     columns: list[ColumnSpec]
+
+    def __post_init__(self) -> None:
+        if not self.nuclides:
+            raise ValueError("config has no nuclide sources")
+        if not self.columns:
+            raise ValueError("config has no output columns")
+        for column in self.columns:
+            _validate_column(column, self.nuclides)
 
     def __getitem__(self, key: str):
         try:
@@ -119,96 +137,54 @@ class BuildConfig(Mapping):
         return len(fields(self))
 
     @classmethod
-    def from_roadmap(
+    def from_template(
         cls,
-        roadmap: str | Path | IO,
-        template: str | Path | IO | None = None,
+        template: str | Path | IO | None,
+        samples: list[SampleSpec],
+        *,
+        title: str = "Synthesis",
+        geometry: bool = True,
     ) -> BuildConfig:
-        """Build a configuration from a roadmap file and a synthesis template.
+        """Build a configuration from a synthesis template and a sample list.
 
-        ``roadmap`` is a CSV/Excel sample list; ``template`` is a wide synthesis
-        template CSV — when ``None`` the packaged lab default is used.
+        ``template`` is a wide synthesis template CSV — when ``None`` the packaged lab
+        default is used. The standard geometry columns are prepended unless
+        ``geometry`` is false.
         """
-        samples, core_id = parse_roadmap(roadmap)
         if template is None:
             ref = resources.files("chenin.synthesis") / "default_template.csv"
             with resources.as_file(ref) as default_path:
-                nuclides, columns = parse_template(default_path)
+                nuclides_raw, columns_raw = parse_template(default_path)
         else:
-            nuclides, columns = parse_template(template)
+            nuclides_raw, columns_raw = parse_template(template)
 
-        raw = {
-            "title": core_id or "Synthesis",
-            "samples": samples,
-            "nuclides": nuclides,
-            "columns": columns,
-        }
-        return cls.from_dict(raw)
-
-    @classmethod
-    def from_dict(cls, raw: dict) -> BuildConfig:
-        samples = [_parse_sample(spec) for spec in raw.get("samples", [])]
-
-        meta_raw = raw.get("metadata", {})
-        metadata = MetadataSpec(
-            base_year=_opt_float(meta_raw.get("base_year")),
-            taux_sedimentation=_opt_float(meta_raw.get("taux_sedimentation")),
-            coring_yr=_opt_float(meta_raw.get("coring_yr")),
-        )
-
-        nuclides_raw = raw.get("nuclides", {})
-        if not nuclides_raw:
-            raise ValueError("config has no nuclide sources")
         nuclides = {key: _parse_nuclide(key, spec) for key, spec in nuclides_raw.items()}
-
-        columns_raw = raw.get("columns", {})
-        if not columns_raw:
-            raise ValueError("config has no output columns")
-        columns = [_parse_column(key, spec, nuclides) for key, spec in columns_raw.items()]
+        columns = [_parse_column(key, spec) for key, spec in columns_raw.items()]
+        if geometry:
+            columns = default_geometry_columns() + columns
 
         return cls(
-            title=raw.get("title", "Synthesis"),
-            description=raw.get("description"),
-            base_path=raw.get("base_path"),
+            title=title,
+            description=None,
             samples=samples,
-            metadata=metadata,
             nuclides=nuclides,
             columns=columns,
         )
 
+    @classmethod
+    def from_dict(cls, raw: dict) -> BuildConfig:
+        """Build a configuration from nested raw dicts (the parsers' output shape)."""
+        samples = [_parse_sample(spec) for spec in raw.get("samples", [])]
+        nuclides = {key: _parse_nuclide(key, spec) for key, spec in raw.get("nuclides", {}).items()}
+        columns = [_parse_column(key, spec) for key, spec in raw.get("columns", {}).items()]
 
-# --- Roadmap parsing --- #
-
-
-def parse_roadmap(file: str | Path | IO) -> tuple[list[dict], str | None]:
-    """Read a roadmap CSV/Excel into sample dicts and the core id.
-
-    Rows with an empty ``G2K Report`` are kept with ``name=None`` (depth-only).
-    """
-    df = _read_table(file, skipinitialspace=True)
-    _require_columns(df, [RM_TOP, RM_BOT])
-
-    samples: list[dict] = []
-    for row in df.to_dict("records"):
-        top = _cell_float(row.get(RM_TOP))
-        bot = _cell_float(row.get(RM_BOT))
-        if top is None and bot is None:
-            continue  # blank trailing line
-        samples.append(
-            {
-                "name": _cell_str(row.get(RM_REPORT)) or None,
-                "depth_top": top,
-                "depth_bot": bot,
-                "sample_code": _cell_str(row.get(RM_SAMPLE)) or None,
-                "dbd": _cell_float(row.get(RM_DBD)),
-            }
+        return cls(
+            title=raw.get("title", "Synthesis"),
+            description=raw.get("description"),
+            samples=samples,
+            nuclides=nuclides,
+            columns=columns,
         )
-
-    core_id = None
-    if RM_CORE in df.columns and len(df):
-        core_id = _cell_str(df[RM_CORE].iloc[0]) or None
-
-    return samples, core_id
 
 
 # --- Template parsing --- #
@@ -273,21 +249,15 @@ def _parse_peaks(display: str, method: str) -> list[dict]:
 # --- Shared helpers --- #
 
 
-def _read_table(file: str | Path | IO, *, skipinitialspace: bool = False) -> pd.DataFrame:
+def _read_table(file: str | Path | IO) -> pd.DataFrame:
     """Read a CSV or Excel table as strings, choosing the reader by extension."""
     name = str(getattr(file, "name", file) or "").lower()
     if name.endswith((".xlsx", ".xls")):
         df = pd.read_excel(file, dtype=str)
     else:
-        df = pd.read_csv(file, dtype=str, skipinitialspace=skipinitialspace)
+        df = pd.read_csv(file, dtype=str)
     df.columns = [str(c).strip() for c in df.columns]
     return df
-
-
-def _require_columns(df: pd.DataFrame, required: list[str]) -> None:
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        raise ValueError(f"roadmap is missing column(s): {', '.join(missing)}")
 
 
 def _cell_str(value) -> str:
@@ -347,7 +317,7 @@ def _parse_sample(spec: dict) -> SampleSpec:
         )
 
     return SampleSpec(
-        name=spec.get("name") or None,
+        report=spec.get("report") or None,
         depth_top=depth_top,
         depth_bot=depth_bot,
         sample_code=spec.get("sample_code") or None,
@@ -374,19 +344,43 @@ def _parse_nuclide(key: str, spec: dict) -> NuclideSpec:
     return NuclideSpec(key=key, peaks=peaks)
 
 
-def _parse_column(key: str, spec: dict, nuclides: dict[str, NuclideSpec]) -> ColumnSpec:
-    """Validate and build a single ColumnSpec, raising clear errors."""
-    _require_identifier("column", key)
-
+def _parse_column(key: str, spec: dict) -> ColumnSpec:
+    """Build a single ColumnSpec from a raw dict; cross-checks happen in BuildConfig."""
     name = spec.get("name")
     if not name:
         raise ValueError(f"column '{key}' is missing a 'name'")
 
-    source = spec.get("source")
-    formula = spec.get("formula")
-    if (source is None) == (formula is None):
-        raise ValueError(f"column '{key}' must have exactly one of 'source' or 'formula'")
-    if source is not None and source not in nuclides:
-        raise ValueError(f"column '{key}' references unknown nuclide '{source}'")
+    return ColumnSpec(
+        key=key,
+        name=name,
+        source=spec.get("source"),
+        formula=spec.get("formula"),
+        geometry=spec.get("geometry"),
+    )
 
-    return ColumnSpec(key=key, name=name, source=source, formula=formula)
+
+def _validate_column(column: ColumnSpec, nuclides: dict[str, NuclideSpec]) -> None:
+    """A column has exactly one kind, and it must resolve against the config."""
+    _require_identifier("column", column.key)
+
+    kinds = [k for k in (column.source, column.formula, column.geometry) if k is not None]
+    if len(kinds) != 1:
+        raise ValueError(
+            f"column '{column.key}' must have exactly one of 'source', 'formula' or 'geometry'"
+        )
+
+    if column.source is not None and column.source not in nuclides:
+        raise ValueError(f"column '{column.key}' references unknown nuclide '{column.source}'")
+
+    if column.geometry is not None and column.geometry not in GEOMETRY_COLUMNS:
+        raise ValueError(
+            f"column '{column.key}' references unknown geometry field '{column.geometry}' "
+            f"(known: {', '.join(GEOMETRY_COLUMNS)})"
+        )
+
+    if column.formula is not None:
+        for ref in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", column.formula):
+            if ref not in nuclides:
+                raise ValueError(
+                    f"column '{column.key}' formula references unknown nuclide '{ref}'"
+                )
